@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
+  let supabaseResponse = NextResponse.next({
     request,
   });
 
@@ -15,23 +15,30 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
 
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(
-            ({ name, value }) => {
-              request.cookies.set(name, value);
-            }
-          );
+        setAll(cookiesToSet, headers) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
 
-          response = NextResponse.next({
+          supabaseResponse = NextResponse.next({
             request,
           });
 
           cookiesToSet.forEach(
             ({ name, value, options }) => {
-              response.cookies.set(
+              supabaseResponse.cookies.set(
                 name,
                 value,
                 options
+              );
+            }
+          );
+
+          Object.entries(headers).forEach(
+            ([key, value]) => {
+              supabaseResponse.headers.set(
+                key,
+                value
               );
             }
           );
@@ -42,7 +49,7 @@ export async function proxy(request: NextRequest) {
 
   await supabase.auth.getUser();
 
-  return response;
+  return supabaseResponse;
 }
 
 export const config = {
