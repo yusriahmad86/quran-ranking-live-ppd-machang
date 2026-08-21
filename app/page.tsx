@@ -136,7 +136,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* BUTTON */}
+            {/* LOGIN BUTTON */}
 
             <button
               type="submit"
@@ -152,9 +152,23 @@ export default function LoginPage() {
 
         </div>
 
-        {/* RANKING PUBLIC */}
+        {/* DAFTAR GURU */}
 
         <div className="mt-5 text-center">
+
+          <button
+            type="button"
+            onClick={() => router.push("/daftar-guru")}
+            className="text-sm text-emerald-400 hover:text-emerald-300"
+          >
+            👨‍🏫 Belum mempunyai akaun? Daftar Guru
+          </button>
+
+        </div>
+
+        {/* RANKING PUBLIC */}
+
+        <div className="mt-3 text-center">
 
           <button
             type="button"
