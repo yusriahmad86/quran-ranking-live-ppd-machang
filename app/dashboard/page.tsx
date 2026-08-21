@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import LogoutButton from "./LogoutButton";
+import { requireAuth } from "@/lib/auth";
 
 export default async function DashboardPage() {
   // Dapatkan jumlah kelas
