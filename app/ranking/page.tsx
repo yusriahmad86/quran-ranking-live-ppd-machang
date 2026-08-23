@@ -4,7 +4,9 @@ import RankingLive from "./RankingLive";
 export default async function RankingPage() {
   const { data: students, error } = await supabase
     .from("students")
-    .select("id, name, photo_url, current_page")
+    .select(
+      "id, name, photo_url, current_page, second_round_page"
+    )
     .order("current_page", {
       ascending: false,
     });

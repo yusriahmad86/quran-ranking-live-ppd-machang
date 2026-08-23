@@ -8,6 +8,7 @@ type Student = {
   name: string;
   photo_url: string | null;
   current_page: number | null;
+  second_round_page: number | null;
 };
 
 // ==========================================
@@ -15,12 +16,12 @@ type Student = {
 // ==========================================
 
 function getLevel(page: number) {
-  if (page === 604) return "GRANDMASTER";
   if (page >= 401) return "HEROIC";
   if (page >= 301) return "DIAMOND";
   if (page >= 201) return "PLATINUM";
   if (page >= 101) return "GOLD";
   if (page >= 51) return "SILVER";
+
   return "BRONZE";
 }
 
@@ -69,27 +70,19 @@ export default function RankingLive({
     useState<Date | null>(null);
 
   // ==========================================
-  // SUSUN RANKING
-  // ==========================================
-
-  function sortStudents(data: Student[]) {
-    return [...data].sort(
-      (a, b) =>
-        (b.current_page ?? 0) -
-        (a.current_page ?? 0)
-    );
-  }
-
-  // ==========================================
   // AMBIL DATA TERKINI
   // ==========================================
 
   async function refreshRanking() {
     const { data, error } = await supabase
       .from("students")
-      .select(
-        "id, name, photo_url, current_page"
-      );
+      .select(`
+        id,
+        name,
+        photo_url,
+        current_page,
+        second_round_page
+      `);
 
     if (error) {
       console.error(
@@ -100,10 +93,7 @@ export default function RankingLive({
       return;
     }
 
-    setStudents(
-      sortStudents(data ?? [])
-    );
-
+    setStudents(data ?? []);
     setLastUpdated(new Date());
   }
 
@@ -112,15 +102,10 @@ export default function RankingLive({
   // ==========================================
 
   useEffect(() => {
-    // Ambil data terkini ketika halaman dibuka
     refreshRanking();
 
     const channel = supabase
       .channel("quran-ranking-live")
-
-      // --------------------------------------
-      // UPDATE
-      // --------------------------------------
 
       .on(
         "postgres_changes",
@@ -134,10 +119,6 @@ export default function RankingLive({
         }
       )
 
-      // --------------------------------------
-      // INSERT
-      // --------------------------------------
-
       .on(
         "postgres_changes",
         {
@@ -149,10 +130,6 @@ export default function RankingLive({
           refreshRanking();
         }
       )
-
-      // --------------------------------------
-      // DELETE
-      // --------------------------------------
 
       .on(
         "postgres_changes",
@@ -166,26 +143,14 @@ export default function RankingLive({
         }
       )
 
-      // --------------------------------------
-      // STATUS CONNECTION
-      // --------------------------------------
-
       .subscribe((status) => {
         console.log(
           "Quran Ranking Realtime:",
           status
         );
 
-        if (status === "SUBSCRIBED") {
-          setIsLive(true);
-        } else {
-          setIsLive(false);
-        }
+        setIsLive(status === "SUBSCRIBED");
       });
-
-    // --------------------------------------
-    // CLEANUP
-    // --------------------------------------
 
     return () => {
       supabase.removeChannel(channel);
@@ -193,26 +158,39 @@ export default function RankingLive({
   }, []);
 
   // ==========================================
-  // PISAHKAN MURID AKTIF & GRANDMASTER
+  // MURID BELUM KHATAM
   // ==========================================
 
-  const activeStudents = students.filter(
-    (student) =>
-      (student.current_page ?? 0) < 604
-  );
+  const activeStudents = students
+    .filter(
+      (student) =>
+        (student.current_page ?? 0) < 604
+    )
+    .sort(
+      (a, b) =>
+        (b.current_page ?? 0) -
+        (a.current_page ?? 0)
+    );
 
-  const completedStudents =
-    students.filter(
+  // ==========================================
+  // GRANDMASTER ROUND 2
+  // ==========================================
+
+  const completedStudents = students
+    .filter(
       (student) =>
         (student.current_page ?? 0) === 604
+    )
+    .sort(
+      (a, b) =>
+        (b.second_round_page ?? 0) -
+        (a.second_round_page ?? 0)
     );
 
   return (
     <div className="space-y-10">
 
-      {/* ================================================= */}
       {/* STATUS LIVE */}
-      {/* ================================================= */}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
@@ -233,9 +211,7 @@ export default function RankingLive({
                 : "text-red-400"
             }`}
           >
-            {isLive
-              ? "LIVE"
-              : "OFFLINE"}
+            {isLive ? "LIVE" : "OFFLINE"}
           </span>
 
         </div>
@@ -243,21 +219,17 @@ export default function RankingLive({
         {lastUpdated && (
           <span className="text-xs text-slate-500">
             Dikemas kini{" "}
-            {lastUpdated.toLocaleTimeString(
-              "ms-MY"
-            )}
+            {lastUpdated.toLocaleTimeString("ms-MY")}
           </span>
         )}
 
       </div>
 
-      {/* ================================================= */}
-      {/* RANKING LIVE */}
-      {/* ================================================= */}
+      {/* ====================================== */}
+      {/* RANKING MURID BELUM KHATAM */}
+      {/* ====================================== */}
 
       <section>
-
-        {/* TAJUK */}
 
         <div className="mb-6">
 
@@ -283,8 +255,6 @@ export default function RankingLive({
 
         </div>
 
-        {/* SENARAI RANKING */}
-
         <div className="space-y-4">
 
           {activeStudents.map(
@@ -307,6 +277,7 @@ export default function RankingLive({
               );
 
               return (
+
                 <div
                   key={student.id}
                   className={`
@@ -344,7 +315,7 @@ export default function RankingLive({
                           }
                         `}
                       >
-                        {index + 1}
+                        #{index + 1}
                       </div>
 
                       {index === 0 && (
@@ -360,19 +331,15 @@ export default function RankingLive({
                     <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-800 flex-shrink-0">
 
                       {student.photo_url ? (
-
                         <img
                           src={student.photo_url}
                           alt={student.name}
                           className="w-full h-full object-cover"
                         />
-
                       ) : (
-
                         <div className="w-full h-full flex items-center justify-center text-3xl">
                           👤
                         </div>
-
                       )}
 
                     </div>
@@ -388,8 +355,6 @@ export default function RankingLive({
                       <p className="text-sm text-slate-400 mt-1">
                         Bacaan Al-Quran
                       </p>
-
-                      {/* PROGRESS */}
 
                       <div className="mt-3">
 
@@ -451,13 +416,12 @@ export default function RankingLive({
                   </div>
 
                 </div>
+
               );
             }
           )}
 
         </div>
-
-        {/* TIADA MURID AKTIF */}
 
         {activeStudents.length === 0 && (
 
@@ -481,9 +445,9 @@ export default function RankingLive({
 
       </section>
 
-      {/* ================================================= */}
-      {/* GRANDMASTER / MURID TELAH TAMAT */}
-      {/* ================================================= */}
+      {/* ====================================== */}
+      {/* GRANDMASTER ROUND 2 */}
+      {/* ====================================== */}
 
       {completedStudents.length > 0 && (
 
@@ -499,39 +463,36 @@ export default function RankingLive({
 
             <div className="relative flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
 
-              {/* LOGO GRANDMASTER */}
-
               <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-slate-950 border border-yellow-500/30 p-2 flex-shrink-0 shadow-xl">
 
                 <img
                   src="/grandmaster-logo.png"
-                  alt="Grand Master"
+                  alt="Grandmaster"
                   className="w-full h-full object-contain"
                 />
 
               </div>
 
-              {/* TAJUK */}
-
               <div>
 
                 <p className="text-sm font-black text-yellow-400 tracking-wider">
-                  🎉 TAHNIAH!
+                  👑 GRANDMASTER
                 </p>
 
                 <h2 className="text-2xl md:text-3xl font-black mt-1">
-                  MURID TELAH TAMAT AL-QURAN
+                  GRANDMASTER RANKING ROUND 2
                 </h2>
 
                 <p className="text-sm text-slate-400 mt-2">
-                  Semua murid yang mencapai
-                  604 / 604 akan berada di sini.
+                  Kedudukan murid yang telah tamat
+                  Al-Quran dan meneruskan bacaan
+                  pusingan kedua.
                 </p>
 
                 <div className="inline-flex items-center gap-2 mt-4 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-4 py-2">
 
                   <span className="text-yellow-400 font-bold">
-                    👑 GRANDMASTER
+                    🏆 ROUND 2
                   </span>
 
                   <span className="text-slate-500">
@@ -552,95 +513,192 @@ export default function RankingLive({
 
           {/* SENARAI GRANDMASTER */}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
+          <div className="space-y-5 mt-5">
 
             {completedStudents.map(
-              (student) => (
+              (student, index) => {
 
-                <div
-                  key={student.id}
-                  className="relative overflow-hidden rounded-3xl border border-yellow-500/20 bg-slate-900 p-6"
-                >
+                const secondRoundPage =
+                  student.second_round_page ?? 0;
 
-                  {/* GLOW */}
+                const secondRoundProgress =
+                  Math.min(
+                    100,
+                    Math.round(
+                      (secondRoundPage / 604) * 100
+                    )
+                  );
 
-                  <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-yellow-500/10 blur-3xl" />
+                return (
 
-                  <div className="relative">
+                  <div
+                    key={student.id}
+                    className={`
+                      relative
+                      overflow-hidden
+                      rounded-3xl
+                      border
+                      p-6
+                      transition-all
+                      duration-500
+                      ${
+                        index === 0
+                          ? "border-yellow-400/50 bg-gradient-to-r from-yellow-500/20 via-slate-900 to-slate-900"
+                          : "border-yellow-500/20 bg-slate-900"
+                      }
+                    `}
+                  >
 
-                    {/* FOTO + NAMA */}
+                    <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-yellow-500/10 blur-3xl" />
 
-                    <div className="flex items-center gap-4">
+                    <div className="relative flex flex-col md:flex-row md:items-center gap-6">
 
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-800 border border-yellow-500/20 flex-shrink-0">
+                      {/* RANK */}
 
-                        {student.photo_url ? (
+                      <div className="w-14 text-center flex-shrink-0">
 
-                          <img
-                            src={student.photo_url}
-                            alt={student.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div
+                          className={`
+                            text-3xl
+                            font-black
+                            ${
+                              index === 0
+                                ? "text-yellow-400"
+                                : index === 1
+                                ? "text-slate-300"
+                                : index === 2
+                                ? "text-orange-400"
+                                : "text-white"
+                            }
+                          `}
+                        >
+                          #{index + 1}
+                        </div>
 
-                        ) : (
+                        {index === 0 && (
 
-                          <div className="w-full h-full flex items-center justify-center text-3xl">
-                            👤
+                          <div className="text-xs text-yellow-400 mt-1 font-bold">
+                            TERATAS
                           </div>
 
                         )}
 
                       </div>
 
-                      <div className="min-w-0 flex-1">
+                      {/* FOTO + LOGO GRANDMASTER ASAL */}
 
-                        <h3 className="font-black text-lg leading-tight break-words">
+                      <div className="relative w-24 h-24 flex-shrink-0">
+
+                        {/* FOTO MURID */}
+
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-800 border border-yellow-500/30">
+
+                          {student.photo_url ? (
+
+                            <img
+                              src={student.photo_url}
+                              alt={student.name}
+                              className="w-full h-full object-cover"
+                            />
+
+                          ) : (
+
+                            <div className="w-full h-full flex items-center justify-center text-3xl">
+                              👤
+                            </div>
+
+                          )}
+
+                        </div>
+
+                        {/* LOGO GRANDMASTER ASAL */}
+
+                        <div className="absolute -right-1 -bottom-1 w-12 h-12 rounded-xl bg-slate-950 border border-yellow-500/50 p-1 shadow-xl">
+
+                          <img
+                            src="/grandmaster-logo.png"
+                            alt="Grandmaster"
+                            className="w-full h-full object-contain"
+                          />
+
+                        </div>
+
+                      </div>
+
+                      {/* MAKLUMAT MURID */}
+
+                      <div className="flex-1 min-w-0">
+
+                        <h2 className="text-xl md:text-2xl font-black leading-tight break-words">
+
+                          <span className="text-yellow-400 mr-2">
+                            👑
+                          </span>
+
                           {student.name}
-                        </h3>
+
+                        </h2>
 
                         <p className="text-sm text-yellow-400 font-bold mt-1">
-                          GRANDMASTER
+                          GRANDMASTER · ROUND 2
                         </p>
 
+                        {/* PROGRESS */}
+
+                        <div className="mt-5">
+
+                          <div className="flex justify-between items-center text-sm text-slate-400 mb-2">
+
+                            <span>
+                              Kemajuan Pusingan Kedua
+                            </span>
+
+                            <span className="font-bold text-yellow-400">
+                              {secondRoundProgress}%
+                            </span>
+
+                          </div>
+
+                          <div className="h-3 rounded-full bg-slate-800 overflow-hidden">
+
+                            <div
+                              className="h-full rounded-full bg-yellow-400 transition-all duration-700"
+                              style={{
+                                width: `${secondRoundProgress}%`,
+                              }}
+                            />
+
+                          </div>
+
+                        </div>
+
                       </div>
 
-                    </div>
+                      {/* MUKA SURAT ROUND 2 */}
 
-                    {/* LOGO GRANDMASTER */}
+                      <div className="text-right flex-shrink-0">
 
-                    <div className="flex items-center justify-center py-6">
+                        <div className="text-4xl font-black text-yellow-400">
+                          {secondRoundPage}
+                        </div>
 
-                      <img
-                        src="/grandmaster-logo.png"
-                        alt="Grand Master"
-                        className="w-36 h-36 object-contain drop-shadow-2xl"
-                      />
+                        <div className="text-xs text-slate-500">
+                          / 604
+                        </div>
 
-                    </div>
+                        <div className="text-xs text-slate-400 mt-2 uppercase tracking-wider">
+                          ROUND 2
+                        </div>
 
-                    {/* STATUS TAMAT */}
-
-                    <div className="rounded-2xl bg-yellow-500/10 border border-yellow-500/20 px-4 py-4 text-center">
-
-                      <div className="text-3xl font-black text-yellow-400">
-                        604 / 604
-                      </div>
-
-                      <div className="text-xs font-bold text-slate-400 mt-2">
-                        AL-QURAN TELAH TAMAT
-                      </div>
-
-                      <div className="text-xs text-slate-600 mt-1">
-                        🎉 Tahniah atas pencapaian!
                       </div>
 
                     </div>
 
                   </div>
 
-                </div>
+                );
 
-              )
+              }
             )}
 
           </div>

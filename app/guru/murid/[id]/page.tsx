@@ -29,16 +29,22 @@ function getLevelIcon(level: string) {
   switch (level) {
     case "GRANDMASTER":
       return "👑";
+
     case "HEROIC":
       return "⚔️";
+
     case "DIAMOND":
       return "💎";
+
     case "PLATINUM":
       return "💠";
+
     case "GOLD":
       return "🥇";
+
     case "SILVER":
       return "🥈";
+
     default:
       return "🥉";
   }
@@ -73,23 +79,52 @@ export default async function StudentPage({
     );
   }
 
-  const currentPage = student.current_page ?? 0;
-  const grandmasterPage = student.grandmaster_page ?? 0;
+  // ==========================================
+  // BACAAN PERTAMA
+  // ==========================================
 
-  const isGrandmaster = currentPage === 604;
+  const currentPage = student.current_page ?? 0;
+
+  // ==========================================
+  // BACAAN KEDUA GRANDMASTER
+  // ==========================================
+
+  const secondRoundPage =
+    student.second_round_page ?? 0;
+
+  // ==========================================
+  // STATUS GRANDMASTER
+  // ==========================================
+
+  const isGrandmaster =
+    currentPage >= 604;
 
   const level = getLevel(currentPage);
-  const icon = getLevelIcon(level);
 
-  const savedPage = isGrandmaster
-    ? grandmasterPage
-    : currentPage;
+  const icon =
+    getLevelIcon(level);
+
+  // ==========================================
+  // NILAI PAPARAN SEMASA
+  // ==========================================
+
+  const displayPage =
+    isGrandmaster
+      ? secondRoundPage
+      : currentPage;
+
+  const displayTotal =
+    isGrandmaster
+      ? 604
+      : 604;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
       {/* HEADER */}
+
       <header className="border-b border-white/10 bg-slate-900">
+
         <div className="max-w-3xl mx-auto px-6 py-5">
 
           <Link
@@ -100,26 +135,33 @@ export default async function StudentPage({
           </Link>
 
         </div>
+
       </header>
 
       {/* PROFILE */}
+
       <section className="max-w-3xl mx-auto px-6 py-10">
 
         <div className="text-center">
 
-          {/* PHOTO */}
+          {/* FOTO */}
+
           <div className="mx-auto w-32 h-32 rounded-full overflow-hidden bg-slate-800 flex items-center justify-center border-4 border-emerald-400">
 
             {student.photo_url ? (
+
               <img
                 src={student.photo_url}
                 alt={student.name}
                 className="w-full h-full object-cover"
               />
+
             ) : (
+
               <span className="text-6xl">
                 👤
               </span>
+
             )}
 
           </div>
@@ -143,7 +185,9 @@ export default async function StudentPage({
         </div>
 
         {/* MESEJ BERJAYA */}
+
         {saved === "1" && (
+
           <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-6 py-5 text-center">
 
             <div className="text-3xl">
@@ -155,227 +199,189 @@ export default async function StudentPage({
             </div>
 
             <p className="text-sm text-slate-300 mt-1">
+
               {isGrandmaster
-                ? `Bacaan kali kedua muka surat ${grandmasterPage} telah direkodkan.`
-                : `Muka surat ${currentPage} telah direkodkan.`}
+                ? `Pusingan kedua kini berada di muka surat ${secondRoundPage}.`
+                : `Muka surat ${currentPage} telah direkodkan.`
+              }
+
             </p>
 
           </div>
+
         )}
 
-        {/* PAPARAN MURID BIASA */}
-        {!isGrandmaster && (
-          <>
-            {/* CURRENT PAGE */}
-            <div className="mt-10 rounded-3xl border border-white/10 bg-slate-900 p-8 text-center">
+        {/* STATUS BACAAN */}
 
-              <p className="text-slate-400">
-                Muka Surat Semasa
-              </p>
+        <div className="mt-10 rounded-3xl border border-white/10 bg-slate-900 p-8 text-center">
 
-              <div className="text-6xl font-bold mt-3">
-                {currentPage}
-                <span className="text-2xl text-slate-500">
-                  {" "}/ 604
-                </span>
-              </div>
+          <p className="text-slate-400">
 
-              <div className="mt-6 inline-flex items-center gap-3 rounded-full bg-slate-800 px-6 py-3">
+            {isGrandmaster
+              ? "Bacaan Pusingan Kedua"
+              : "Muka Surat Semasa"
+            }
 
-                <span className="text-3xl">
-                  {icon}
-                </span>
+          </p>
 
-                <span className="text-xl font-bold">
-                  {level}
-                </span>
+          <div className="text-6xl font-bold mt-3">
 
-              </div>
+            {displayPage}
 
-            </div>
+            <span className="text-2xl text-slate-500">
+              {" "}/ {displayTotal}
+            </span>
 
-            {/* INPUT MURID BIASA */}
-            <div className="mt-6 rounded-3xl border border-white/10 bg-slate-900 p-8">
+          </div>
 
-              <h2 className="text-xl font-bold">
-                Masukkan Muka Surat Baharu
-              </h2>
+          <div className="mt-6 inline-flex items-center gap-3 rounded-full bg-slate-800 px-6 py-3">
 
-              <form
-                action={async (formData) => {
-                  "use server";
+            <span className="text-3xl">
+              {icon}
+            </span>
 
-                  const pageValue = Number(
-                    formData.get("page")
-                  );
+            <span className="text-xl font-bold">
 
-                  if (
-                    !Number.isInteger(pageValue) ||
-                    pageValue < 1 ||
-                    pageValue > 604
-                  ) {
-                    throw new Error(
-                      "Muka surat mestilah antara 1 hingga 604."
-                    );
-                  }
+              {isGrandmaster
+                ? "GRANDMASTER • ROUND 2"
+                : level
+              }
 
-                  const { error } = await supabase
-                    .from("students")
-                    .update({
-                      current_page: pageValue,
-                      updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", student.id);
+            </span>
 
-                  if (error) {
-                    throw new Error(error.message);
-                  }
+          </div>
 
-                  redirect(
-                    `/guru/murid/${student.id}?saved=1`
-                  );
-                }}
-              >
+        </div>
 
-                <input
-                  name="page"
-                  type="number"
-                  min="1"
-                  max="604"
-                  defaultValue={currentPage}
-                  className="mt-5 w-full rounded-xl bg-slate-800 border border-white/10 px-5 py-4 text-white text-2xl text-center outline-none focus:border-emerald-400"
-                />
+        {/* GRANDMASTER INFO */}
 
-                <button
-                  type="submit"
-                  className="mt-5 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 text-lg transition"
-                >
-                  💾 SIMPAN BACAAN
-                </button>
-
-              </form>
-
-            </div>
-          </>
-        )}
-
-        {/* PAPARAN GRANDMASTER */}
         {isGrandmaster && (
-          <>
-            <div className="mt-10 rounded-3xl border border-yellow-500/30 bg-yellow-500/10 p-8 text-center">
 
-              <div className="text-6xl">
-                👑
-              </div>
+          <div className="mt-6 rounded-3xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-center">
 
-              <p className="text-yellow-400 font-bold mt-4">
-                GRANDMASTER
-              </p>
-
-              <h2 className="text-3xl font-black mt-2">
-                Tahniah! Murid Telah Khatam
-              </h2>
-
-              <p className="text-slate-400 mt-3">
-                Khatam Al-Quran kali pertama telah selesai.
-              </p>
-
-              <div className="mt-6 text-sm text-slate-300">
-                🏆 Khatam Pertama: 604 / 604
-              </div>
-
+            <div className="text-4xl">
+              👑
             </div>
 
-            {/* BACAAN KALI KEDUA */}
-            <div className="mt-6 rounded-3xl border border-purple-500/30 bg-purple-500/10 p-8 text-center">
+            <h2 className="text-xl font-black text-yellow-400 mt-3">
+              GRANDMASTER
+            </h2>
 
-              <p className="text-purple-300">
-                👑 Bacaan Kali Kedua
-              </p>
+            <p className="text-sm text-slate-400 mt-2">
+              Murid ini telah menamatkan bacaan Al-Quran.
+              Pengisian seterusnya akan dikira sebagai
+              bacaan pusingan kedua.
+            </p>
 
-              <div className="text-6xl font-bold mt-3">
-                {grandmasterPage}
-                <span className="text-2xl text-slate-400">
-                  {" "}/ 604
-                </span>
-              </div>
+          </div>
 
-              <p className="text-sm text-slate-400 mt-4">
-                Bacaan ini digunakan untuk ranking
-                dalam kalangan Grandmaster.
-              </p>
-
-            </div>
-
-            {/* INPUT GRANDMASTER */}
-            <div className="mt-6 rounded-3xl border border-purple-500/30 bg-slate-900 p-8">
-
-              <h2 className="text-xl font-bold">
-                👑 Masukkan Bacaan Kali Kedua
-              </h2>
-
-              <p className="text-sm text-slate-400 mt-2">
-                Masukkan muka surat terkini bagi
-                bacaan Al-Quran kali kedua.
-              </p>
-
-              <form
-                action={async (formData) => {
-                  "use server";
-
-                  const pageValue = Number(
-                    formData.get("grandmaster_page")
-                  );
-
-                  if (
-                    !Number.isInteger(pageValue) ||
-                    pageValue < 0 ||
-                    pageValue > 604
-                  ) {
-                    throw new Error(
-                      "Muka surat mestilah antara 0 hingga 604."
-                    );
-                  }
-
-                  const { error } = await supabase
-                    .from("students")
-                    .update({
-                      grandmaster_page: pageValue,
-                      updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", student.id);
-
-                  if (error) {
-                    throw new Error(error.message);
-                  }
-
-                  redirect(
-                    `/guru/murid/${student.id}?saved=1`
-                  );
-                }}
-              >
-
-                <input
-                  name="grandmaster_page"
-                  type="number"
-                  min="0"
-                  max="604"
-                  defaultValue={grandmasterPage}
-                  className="mt-5 w-full rounded-xl bg-slate-800 border border-white/10 px-5 py-4 text-white text-2xl text-center outline-none focus:border-purple-400"
-                />
-
-                <button
-                  type="submit"
-                  className="mt-5 w-full rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold py-4 text-lg transition"
-                >
-                  👑 SIMPAN BACAAN KALI KEDUA
-                </button>
-
-              </form>
-
-            </div>
-          </>
         )}
+
+        {/* INPUT */}
+
+        <div className="mt-6 rounded-3xl border border-white/10 bg-slate-900 p-8">
+
+          <h2 className="text-xl font-bold">
+
+            {isGrandmaster
+              ? "Masukkan Muka Surat Pusingan Kedua"
+              : "Masukkan Muka Surat Baharu"
+            }
+
+          </h2>
+
+          <form
+            action={async (formData) => {
+              "use server";
+
+              const pageValue = Number(
+                formData.get("page")
+              );
+
+              if (
+                !Number.isInteger(pageValue) ||
+                pageValue < 1 ||
+                pageValue > 604
+              ) {
+                throw new Error(
+                  "Muka surat mestilah antara 1 hingga 604."
+                );
+              }
+
+              // ==================================
+              // GRANDMASTER
+              // ==================================
+
+              if (isGrandmaster) {
+
+                const { error } = await supabase
+                  .from("students")
+                  .update({
+                    second_round_page: pageValue,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", student.id);
+
+                if (error) {
+                  throw new Error(error.message);
+                }
+
+              } else {
+
+                // ==================================
+                // BACAAN PERTAMA
+                // ==================================
+
+                const { error } = await supabase
+                  .from("students")
+                  .update({
+                    current_page: pageValue,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", student.id);
+
+                if (error) {
+                  throw new Error(error.message);
+                }
+
+              }
+
+              redirect(
+                `/guru/murid/${student.id}?saved=1`
+              );
+            }}
+          >
+
+            <input
+              name="page"
+              type="number"
+              min="1"
+              max="604"
+
+              defaultValue={
+                isGrandmaster
+                  ? secondRoundPage
+                  : currentPage
+              }
+
+              className="mt-5 w-full rounded-xl bg-slate-800 border border-white/10 px-5 py-4 text-white text-2xl text-center outline-none focus:border-emerald-400"
+            />
+
+            <button
+              type="submit"
+              className="mt-5 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 text-lg transition"
+            >
+
+              {isGrandmaster
+                ? "👑 SIMPAN BACAAN ROUND 2"
+                : "💾 SIMPAN BACAAN"
+              }
+
+            </button>
+
+          </form>
+
+        </div>
 
       </section>
 
