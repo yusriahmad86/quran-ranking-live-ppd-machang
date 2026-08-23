@@ -325,9 +325,7 @@ export default function RankingLive({
 
                   <div className="flex flex-col md:flex-row md:items-center gap-5">
 
-                    {/* ================================= */}
                     {/* RANK */}
-                    {/* ================================= */}
 
                     <div className="w-12 text-center flex-shrink-0">
 
@@ -357,9 +355,7 @@ export default function RankingLive({
 
                     </div>
 
-                    {/* ================================= */}
                     {/* FOTO */}
-                    {/* ================================= */}
 
                     <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-800 flex-shrink-0">
 
@@ -381,13 +377,11 @@ export default function RankingLive({
 
                     </div>
 
-                    {/* ================================= */}
                     {/* NAMA + PROGRESS */}
-                    {/* ================================= */}
 
                     <div className="flex-1 min-w-0">
 
-                      <h2 className="font-bold text-lg truncate">
+                      <h2 className="font-bold text-lg leading-tight break-words">
                         {student.name}
                       </h2>
 
@@ -426,9 +420,7 @@ export default function RankingLive({
 
                     </div>
 
-                    {/* ================================= */}
                     {/* MUKA SURAT */}
-                    {/* ================================= */}
 
                     <div className="text-right flex-shrink-0">
 
@@ -442,9 +434,7 @@ export default function RankingLive({
 
                     </div>
 
-                    {/* ================================= */}
                     {/* LEVEL */}
-                    {/* ================================= */}
 
                     <div className="w-36 text-center flex-shrink-0">
 
@@ -467,9 +457,7 @@ export default function RankingLive({
 
         </div>
 
-        {/* ================================= */}
         {/* TIADA MURID AKTIF */}
-        {/* ================================= */}
 
         {activeStudents.length === 0 && (
 
@@ -501,13 +489,9 @@ export default function RankingLive({
 
         <section>
 
-          {/* ============================================= */}
           {/* HEADER GRANDMASTER */}
-          {/* ============================================= */}
 
           <div className="relative overflow-hidden rounded-3xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-slate-900 to-yellow-500/10 p-6 md:p-8">
-
-            {/* GLOW */}
 
             <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-yellow-500/10 blur-3xl" />
 
@@ -566,9 +550,7 @@ export default function RankingLive({
 
           </div>
 
-          {/* ============================================= */}
           {/* SENARAI GRANDMASTER */}
-          {/* ============================================= */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
 
@@ -612,7 +594,7 @@ export default function RankingLive({
 
                       <div className="min-w-0 flex-1">
 
-                        <h3 className="font-black text-lg truncate">
+                        <h3 className="font-black text-lg leading-tight break-words">
                           {student.name}
                         </h3>
 
