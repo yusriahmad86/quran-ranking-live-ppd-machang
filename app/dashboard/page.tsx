@@ -1,114 +1,224 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
+type DailyIndividual = {
+  position: number;
+  participant_name: string;
+  photo_url: string | null;
+  school_name: string;
+  pages_today: number;
+};
+
+type DailySchool = {
+  position: number;
+  school_name: string;
+  participant_count: number;
+  average_pages: number;
+};
+
+type OverallProgress = {
+  position: number;
+  participant_name: string;
+  photo_url: string | null;
+  school_name: string;
+  current_page: number;
+};
+
+type Grandmaster = {
+  participant_name: string;
+  photo_url: string | null;
+  school_name: string;
+  grandmaster_at: string | null;
+};
+
+type LiveRankings = {
+  date: string;
+  individual: DailyIndividual[];
+  schools: DailySchool[];
+  overall: OverallProgress[];
+  grandmasters: Grandmaster[];
+};
+
+
+/* ========================================= */
+/* FORMAT TARIKH */
+/* ========================================= */
+
+function formatDate(date: string) {
+  return new Date(`${date}T00:00:00+08:00`).toLocaleDateString(
+    "ms-MY",
+    {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }
+  );
+}
+
+
+/* ========================================= */
+/* MAIN DASHBOARD */
+/* ========================================= */
+
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const today = new Date().toLocaleDateString("en-CA", {
-    timeZone: "Asia/Kuala_Lumpur",
-  });
 
-  const [schoolsResult, participantsResult, todayRecordsResult] =
-    await Promise.all([
-      supabase.from("schools").select("*", {
-        count: "exact",
-        head: true,
-      }),
+  /* ========================================= */
+  /* DAPATKAN DATA YANG SAMA DENGAN RANKING */
+  /* ========================================= */
 
-      supabase
-        .from("participants")
-        .select("id, name, current_page, grandmaster_at")
-        .order("current_page", {
-          ascending: false,
-          nullsFirst: false,
-        }),
+  const { data, error } =
+    await supabase.rpc("get_live_rankings");
 
-      supabase
-        .from("reading_records")
-        .select("pages_read")
-        .eq("reading_date", today)
-        .is("voided_at", null)
-        .eq("is_baseline", false),
-    ]);
 
-  const { count: totalSchools, error: schoolsError } = schoolsResult;
-  const { data: participants, error: participantsError } =
-    participantsResult;
-  const { data: todayRecords, error: todayRecordsError } =
-    todayRecordsResult;
+  /* ========================================= */
+  /* ERROR */
+/* ========================================= */
 
-  if (schoolsError || participantsError || todayRecordsError) {
+  if (error) {
     return (
       <main className="min-h-screen bg-slate-950 p-10 text-white">
-        <h1 className="text-3xl font-bold text-red-400">
-          Ralat mendapatkan data dashboard
-        </h1>
 
-        {schoolsError && (
+        <div className="mx-auto max-w-4xl">
+
+          <h1 className="text-3xl font-black text-red-400">
+            Ralat mendapatkan data dashboard
+          </h1>
+
           <p className="mt-4 text-slate-300">
-            Ralat sekolah: {schoolsError.message}
+            {error.message}
           </p>
-        )}
 
-        {participantsError && (
-          <p className="mt-2 text-slate-300">
-            Ralat peserta: {participantsError.message}
-          </p>
-        )}
+          <div className="mt-8">
 
-        {todayRecordsError && (
-          <p className="mt-2 text-slate-300">
-            Ralat bacaan hari ini: {todayRecordsError.message}
-          </p>
-        )}
+            <Link
+              href="/ranking"
+              className="inline-flex rounded-xl bg-yellow-400 px-5 py-3 font-bold text-slate-950"
+            >
+              🏆 Buka Ranking Live
+            </Link>
+
+          </div>
+
+        </div>
+
       </main>
     );
   }
 
-  const totalParticipants = participants?.length ?? 0;
 
+  /* ========================================= */
+  /* DATA */
+/* ========================================= */
+
+  const rankings =
+    data as LiveRankings;
+
+
+  const individual =
+    rankings?.individual ?? [];
+
+
+  const schools =
+    rankings?.schools ?? [];
+
+
+  const overall =
+    rankings?.overall ?? [];
+
+
+  const grandmasters =
+    rankings?.grandmasters ?? [];
+
+
+  /* ========================================= */
+  /* KIRAAN STATISTIK */
+/* ========================================= */
+
+  // Jumlah sekolah
+  const totalSchools =
+    schools.length;
+
+
+  // Jumlah peserta
+  //
+  // overall = peserta yang belum Grandmaster
+  // grandmasters = peserta yang telah khatam
+  //
+  const totalParticipants =
+    overall.length + grandmasters.length;
+
+
+  // Jumlah muka surat dibaca hari ini
+  const totalTodayPages =
+    individual.reduce(
+      (total, participant) =>
+        total + (participant.pages_today ?? 0),
+      0
+    );
+
+
+  // Jumlah keseluruhan muka surat
+  //
+  // Peserta biasa + Grandmaster.
+  // Grandmaster dikira 604 muka surat.
+  //
   const totalOverallPages =
-    participants?.reduce(
+    overall.reduce(
       (total, participant) =>
         total + (participant.current_page ?? 0),
       0
-    ) ?? 0;
+    ) +
+    grandmasters.length * 604;
 
-  const totalTodayPages =
-    todayRecords?.reduce(
-      (total, record) =>
-        total + (record.pages_read ?? 0),
-      0
-    ) ?? 0;
 
-  const topParticipant = participants?.[0] ?? null;
-
+  // Jumlah Grandmaster
   const totalGrandmasters =
-    participants?.filter(
-      (participant) => participant.grandmaster_at
-    ).length ?? 0;
+    grandmasters.length;
+
+
+  // Peserta paling tinggi
+  const topParticipant =
+    overall.length > 0
+      ? overall[0]
+      : null;
+
+
+  /* ========================================= */
+  /* PAGE */
+/* ========================================= */
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
+
+      {/* ===================================== */}
       {/* HEADER */}
+      {/* ===================================== */}
 
       <header className="border-b border-white/10 bg-slate-900">
 
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
 
           <div>
+
             <h1 className="text-xl font-black">
+
               📖 QURAN RANKING{" "}
+
               <span className="text-emerald-400">
                 LIVE
               </span>
+
             </h1>
 
             <p className="mt-1 text-xs text-slate-400">
               PROGRAM KHATAM MURID · PPD MACHANG
             </p>
+
           </div>
+
 
           <Link
             href="/ranking"
@@ -122,9 +232,14 @@ export default async function DashboardPage() {
       </header>
 
 
+      {/* ===================================== */}
       {/* CONTENT */}
+      {/* ===================================== */}
 
       <section className="mx-auto max-w-6xl px-6 py-10">
+
+
+        {/* TAJUK */}
 
         <div className="mb-10">
 
@@ -140,12 +255,23 @@ export default async function DashboardPage() {
             Ringkasan program bacaan Al-Quran semua sekolah.
           </p>
 
+          {rankings?.date && (
+            <p className="mt-3 text-sm text-slate-500">
+              📅 Data setakat {formatDate(rankings.date)}
+            </p>
+          )}
+
         </div>
 
 
-        {/* STATISTIK */}
+        {/* =================================== */}
+        {/* STATISTIK UTAMA */}
+        {/* =================================== */}
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+
+
+          {/* SEKOLAH */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
 
@@ -158,11 +284,17 @@ export default async function DashboardPage() {
             </p>
 
             <p className="mt-1 text-4xl font-black">
-              {totalSchools ?? 0}
+              {totalSchools}
+            </p>
+
+            <p className="mt-1 text-sm text-blue-400">
+              sekolah aktif
             </p>
 
           </div>
 
+
+          {/* PESERTA */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
 
@@ -178,8 +310,14 @@ export default async function DashboardPage() {
               {totalParticipants}
             </p>
 
+            <p className="mt-1 text-sm text-emerald-400">
+              peserta aktif
+            </p>
+
           </div>
 
+
+          {/* BACAAN HARI INI */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
 
@@ -202,7 +340,9 @@ export default async function DashboardPage() {
           </div>
 
 
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
+          {/* GRANDMASTER */}
+
+          <div className="rounded-3xl border border-yellow-500/20 bg-slate-900 p-6">
 
             <div className="mb-4 text-4xl">
               👑
@@ -212,8 +352,12 @@ export default async function DashboardPage() {
               Grandmaster
             </p>
 
-            <p className="mt-1 text-4xl font-black">
+            <p className="mt-1 text-4xl font-black text-yellow-400">
               {totalGrandmasters}
+            </p>
+
+            <p className="mt-1 text-sm text-yellow-500">
+              telah khatam
             </p>
 
           </div>
@@ -221,9 +365,14 @@ export default async function DashboardPage() {
         </div>
 
 
+        {/* =================================== */}
         {/* KEMAJUAN */}
+        {/* =================================== */}
 
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+
+
+          {/* PESERTA TERATAS */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
 
@@ -235,24 +384,54 @@ export default async function DashboardPage() {
               Kemajuan Keseluruhan
             </p>
 
+
             {topParticipant ? (
+
               <>
+
                 <p className="mt-2 text-2xl font-black">
-                  {topParticipant.name}
+                  {topParticipant.participant_name}
                 </p>
 
-                <p className="mt-1 text-emerald-400">
-                  {topParticipant.current_page ?? 0} / 604 muka surat
+                <p className="mt-1 text-sm text-slate-400">
+                  {topParticipant.school_name}
                 </p>
+
+                <p className="mt-3 text-xl font-black text-emerald-400">
+                  {topParticipant.current_page} / 604 muka surat
+                </p>
+
+
+                {/* PROGRESS */}
+
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-800">
+
+                  <div
+                    className="h-full rounded-full bg-emerald-500"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (topParticipant.current_page / 604) * 100
+                      )}%`,
+                    }}
+                  />
+
+                </div>
+
               </>
+
             ) : (
+
               <p className="mt-2 text-slate-500">
                 Belum ada peserta.
               </p>
+
             )}
 
           </div>
 
+
+          {/* JUMLAH KEMAJUAN */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
 
@@ -264,20 +443,253 @@ export default async function DashboardPage() {
               Jumlah Kemajuan Semua Peserta
             </p>
 
-            <p className="mt-2 text-2xl font-black">
-              {totalOverallPages.toLocaleString()} muka surat
+            <p className="mt-2 text-3xl font-black text-emerald-400">
+              {totalOverallPages.toLocaleString()}
             </p>
 
             <p className="mt-1 text-sm text-slate-500">
-              Daripada sasaran 604 muka surat setiap peserta.
+              muka surat keseluruhan
             </p>
+
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+
+
+              <div className="rounded-2xl bg-slate-800 p-4">
+
+                <p className="text-xs text-slate-500">
+                  Belum Khatam
+                </p>
+
+                <p className="mt-1 text-xl font-black">
+                  {overall.length}
+                </p>
+
+                <p className="text-xs text-slate-500">
+                  peserta
+                </p>
+
+              </div>
+
+
+              <div className="rounded-2xl bg-yellow-500/10 p-4">
+
+                <p className="text-xs text-yellow-500">
+                  Grandmaster
+                </p>
+
+                <p className="mt-1 text-xl font-black text-yellow-400">
+                  {grandmasters.length}
+                </p>
+
+                <p className="text-xs text-yellow-500">
+                  peserta
+                </p>
+
+              </div>
+
+
+            </div>
 
           </div>
 
         </div>
 
 
-        {/* MENU */}
+        {/* =================================== */}
+        {/* RANKING SEKOLAH RINGKAS */}
+        {/* =================================== */}
+
+        <div className="mt-10 rounded-3xl border border-white/10 bg-slate-900 p-7">
+
+          <div className="flex items-center justify-between gap-4">
+
+            <div>
+
+              <p className="font-bold text-blue-400">
+                🏫 SEKOLAH
+              </p>
+
+              <h3 className="mt-1 text-2xl font-black">
+                Ranking Sekolah Hari Ini
+              </h3>
+
+            </div>
+
+
+            <Link
+              href="/ranking"
+              className="text-sm font-bold text-yellow-400 hover:text-yellow-300"
+            >
+              Lihat penuh →
+            </Link>
+
+          </div>
+
+
+          {schools.length > 0 ? (
+
+            <div className="mt-6 space-y-3">
+
+              {schools.slice(0, 5).map((school) => (
+
+                <div
+                  key={`${school.position}-${school.school_name}`}
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-800 px-5 py-4"
+                >
+
+                  <div className="flex items-center gap-4">
+
+                    <span className="text-2xl">
+                      {school.position === 1
+                        ? "🥇"
+                        : school.position === 2
+                        ? "🥈"
+                        : school.position === 3
+                        ? "🥉"
+                        : `#${school.position}`}
+                    </span>
+
+                    <div>
+
+                      <p className="font-bold">
+                        {school.school_name}
+                      </p>
+
+                      <p className="text-xs text-slate-500">
+                        {school.participant_count} peserta aktif
+                      </p>
+
+                    </div>
+
+                  </div>
+
+
+                  <div className="text-right">
+
+                    <p className="font-black text-blue-400">
+                      {school.average_pages.toFixed(1)}
+                    </p>
+
+                    <p className="text-[10px] text-slate-500">
+                      muka surat / peserta
+                    </p>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          ) : (
+
+            <p className="mt-6 text-slate-500">
+              Belum ada data sekolah.
+            </p>
+
+          )}
+
+        </div>
+
+
+        {/* =================================== */}
+        {/* GRANDMASTER TERKINI */}
+        {/* =================================== */}
+
+        {grandmasters.length > 0 && (
+
+          <div className="mt-10 rounded-3xl border border-yellow-500/20 bg-yellow-500/5 p-7">
+
+            <div className="flex items-center justify-between gap-4">
+
+              <div>
+
+                <p className="font-bold text-yellow-400">
+                  👑 PENCAPAIAN
+                </p>
+
+                <h3 className="mt-1 text-2xl font-black">
+                  Grandmaster
+                </h3>
+
+              </div>
+
+
+              <Link
+                href="/ranking"
+                className="text-sm font-bold text-yellow-400 hover:text-yellow-300"
+              >
+                Lihat semua →
+              </Link>
+
+            </div>
+
+
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+
+              {grandmasters.slice(0, 4).map((student) => (
+
+                <div
+                  key={`${student.participant_name}-${student.school_name}`}
+                  className="flex items-center gap-4 rounded-2xl border border-yellow-500/10 bg-slate-900 p-4"
+                >
+
+                  {/* FOTO */}
+
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-slate-800">
+
+                    {student.photo_url ? (
+
+                      <img
+                        src={student.photo_url}
+                        alt={student.participant_name}
+                        className="h-full w-full object-cover"
+                      />
+
+                    ) : (
+
+                      <div className="flex h-full w-full items-center justify-center text-2xl">
+                        👤
+                      </div>
+
+                    )}
+
+                  </div>
+
+
+                  <div className="min-w-0">
+
+                    <p className="truncate font-bold">
+                      {student.participant_name}
+                    </p>
+
+                    <p className="truncate text-sm text-slate-500">
+                      {student.school_name}
+                    </p>
+
+                  </div>
+
+
+                  <div className="ml-auto text-2xl">
+                    👑
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </div>
+
+        )}
+
+
+        {/* =================================== */}
+        {/* MENU UTAMA */}
+        {/* =================================== */}
 
         <div className="mt-12">
 
@@ -285,7 +697,11 @@ export default async function DashboardPage() {
             Menu Utama
           </h3>
 
+
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+
+
+            {/* PENGISIAN */}
 
             <Link
               href="/guru"
@@ -311,6 +727,8 @@ export default async function DashboardPage() {
 
             </Link>
 
+
+            {/* RANKING */}
 
             <Link
               href="/ranking"
@@ -340,7 +758,21 @@ export default async function DashboardPage() {
 
         </div>
 
+
       </section>
+
+
+      {/* ===================================== */}
+      {/* FOOTER */}
+      {/* ===================================== */}
+
+      <footer className="border-t border-white/10 bg-slate-900">
+
+        <p className="py-6 text-center text-xs text-slate-600">
+          © 2026 QURAN RANKING LIVE · PROGRAM KHATAM MURID PPD MACHANG
+        </p>
+
+      </footer>
 
     </main>
   );
