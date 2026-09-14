@@ -45,8 +45,15 @@ async function compressImage(file: File) {
     maxDimension / Math.max(image.width, image.height)
   );
 
-  const width = Math.max(1, Math.round(image.width * scale));
-  const height = Math.max(1, Math.round(image.height * scale));
+  const width = Math.max(
+    1,
+    Math.round(image.width * scale)
+  );
+
+  const height = Math.max(
+    1,
+    Math.round(image.height * scale)
+  );
 
   const canvas = document.createElement("canvas");
 
@@ -60,7 +67,13 @@ async function compressImage(file: File) {
     throw new Error("Gagal memproses gambar.");
   }
 
-  context.drawImage(image, 0, 0, width, height);
+  context.drawImage(
+    image,
+    0,
+    0,
+    width,
+    height
+  );
 
   image.close();
 
@@ -68,11 +81,20 @@ async function compressImage(file: File) {
   let blob: Blob | null = null;
 
   while (quality >= 0.4) {
-    blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/jpeg", quality);
-    });
+    blob = await new Promise<Blob | null>(
+      (resolve) => {
+        canvas.toBlob(
+          resolve,
+          "image/jpeg",
+          quality
+        );
+      }
+    );
 
-    if (blob && blob.size <= 700 * 1024) {
+    if (
+      blob &&
+      blob.size <= 700 * 1024
+    ) {
       break;
     }
 
@@ -80,37 +102,59 @@ async function compressImage(file: File) {
   }
 
   if (!blob) {
-    throw new Error("Gagal memampatkan gambar.");
+    throw new Error(
+      "Gagal memampatkan gambar."
+    );
   }
 
-  if (blob.size > 3 * 1024 * 1024) {
+  if (
+    blob.size >
+    3 * 1024 * 1024
+  ) {
     throw new Error(
       "Gambar masih melebihi had 3 MB selepas compression."
     );
   }
 
-  return new File([blob], "participant-photo.jpg", {
-    type: "image/jpeg",
-  });
+  return new File(
+    [blob],
+    "participant-photo.jpg",
+    {
+      type: "image/jpeg",
+    }
+  );
 }
 
 export default function DaftarMuridPage() {
-  const [schools, setSchools] = useState<School[]>([]);
+  const [schools, setSchools] =
+    useState<School[]>([]);
 
-  const [selectedSchoolId, setSelectedSchoolId] = useState("");
-  const [newParticipantName, setNewParticipantName] = useState("");
-  const [startingPage, setStartingPage] = useState("0");
+  const [selectedSchoolId, setSelectedSchoolId] =
+    useState("");
+
+  const [newParticipantName, setNewParticipantName] =
+    useState("");
+
+  const [startingPage, setStartingPage] =
+    useState("0");
+
   const [newParticipantPhoto, setNewParticipantPhoto] =
     useState<File | null>(null);
+
   const [newParticipantGroup, setNewParticipantGroup] =
     useState("1");
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
+
   const [savingParticipant, setSavingParticipant] =
     useState(false);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] =
+    useState("");
+
+  const [success, setSuccess] =
+    useState("");
 
   const groups = Array.from(
     { length: 10 },
@@ -122,7 +166,10 @@ export default function DaftarMuridPage() {
   // =====================================================
 
   async function loadSchools() {
-    const { data, error } = await supabase.rpc(
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
       "get_active_schools"
     );
 
@@ -130,17 +177,24 @@ export default function DaftarMuridPage() {
       setError(
         `Gagal memuatkan senarai sekolah: ${error.message}`
       );
+
       setSchools([]);
+
       return;
     }
 
-    const schoolData = (data ?? []) as School[];
+    const schoolData =
+      (data ?? []) as School[];
 
     setSchools(schoolData);
 
-    if (schoolData.length > 0) {
+    if (
+      schoolData.length > 0
+    ) {
       setSelectedSchoolId(
-        (current) => current || schoolData[0].id
+        (current) =>
+          current ||
+          schoolData[0].id
       );
     }
   }
@@ -170,40 +224,102 @@ export default function DaftarMuridPage() {
     participantId: string,
     file: File
   ) {
-    const compressedFile = await compressImage(file);
+    // ---------------------------------------------------
+    // LANGKAH 1 - COMPRESSION
+    // ---------------------------------------------------
 
-    const path = `${participantId}/profile.jpg`;
+    let compressedFile: File;
 
-    const { error: uploadError } = await supabase.storage
-      .from("participant-photos")
-      .upload(path, compressedFile, {
-        upsert: true,
-        contentType: "image/jpeg",
-        cacheControl: "3600",
-      });
+    try {
+      compressedFile =
+        await compressImage(file);
+    } catch (compressionError) {
+      const message =
+        compressionError instanceof Error
+          ? compressionError.message
+          : "Gagal memproses gambar.";
 
-    if (uploadError) {
-      throw new Error(uploadError.message);
+      throw new Error(
+        `LANGKAH COMPRESSION GAMBAR GAGAL: ${message}`
+      );
     }
 
+    // ---------------------------------------------------
+    // LANGKAH 2 - UPLOAD STORAGE
+    // ---------------------------------------------------
+
+    const path =
+      `${participantId}/profile.jpg`;
+
     const {
-      data: { publicUrl },
-    } = supabase.storage
-      .from("participant-photos")
-      .getPublicUrl(path);
+      error: uploadError,
+    } =
+      await supabase.storage
+        .from("participant-photos")
+        .upload(
+          path,
+          compressedFile,
+          {
+            upsert: true,
+            contentType:
+              "image/jpeg",
+            cacheControl:
+              "3600",
+          }
+        );
 
-    const photoUrl = `${publicUrl}?v=${Date.now()}`;
+    if (uploadError) {
+      throw new Error(
+        `LANGKAH UPLOAD GAMBAR GAGAL: ${uploadError.message}`
+      );
+    }
 
-    const { error: photoError } = await supabase.rpc(
-      "update_participant_photo",
-      {
-        p_participant_id: participantId,
-        p_photo_url: photoUrl,
-      }
-    );
+    // ---------------------------------------------------
+    // LANGKAH 3 - DAPATKAN PUBLIC URL
+    // ---------------------------------------------------
+
+    const {
+      data: {
+        publicUrl,
+      },
+    } =
+      supabase.storage
+        .from(
+          "participant-photos"
+        )
+        .getPublicUrl(path);
+
+    if (!publicUrl) {
+      throw new Error(
+        "LANGKAH PUBLIC URL GAGAL: URL gambar tidak dapat diperoleh."
+      );
+    }
+
+    const photoUrl =
+      `${publicUrl}?v=${Date.now()}`;
+
+    // ---------------------------------------------------
+    // LANGKAH 4 - SIMPAN URL KE PARTICIPANTS
+    // ---------------------------------------------------
+
+    const {
+      error: photoError,
+    } =
+      await supabase.rpc(
+        "update_participant_photo",
+        {
+          p_participant_id:
+            participantId,
+
+          p_photo_url:
+            photoUrl,
+        }
+      );
 
     if (photoError) {
-      throw new Error(photoError.message);
+      throw new Error(
+        `LANGKAH SIMPAN URL GAMBAR GAGAL: ${photoError.message}`
+      );
     }
   }
 
@@ -216,14 +332,27 @@ export default function DaftarMuridPage() {
   ) {
     event.preventDefault();
 
-    const name = newParticipantName.trim();
-    const page = Number(startingPage);
-    const groupNumber = Number(newParticipantGroup);
+    const name =
+      newParticipantName.trim();
 
-    if (!selectedSchoolId || !name) {
+    const page =
+      Number(startingPage);
+
+    const groupNumber =
+      Number(newParticipantGroup);
+
+    // ---------------------------------------------------
+    // VALIDASI
+    // ---------------------------------------------------
+
+    if (
+      !selectedSchoolId ||
+      !name
+    ) {
       setError(
         "Pilih sekolah dan masukkan nama peserta."
       );
+
       return;
     }
 
@@ -235,17 +364,21 @@ export default function DaftarMuridPage() {
       setError(
         "Muka surat permulaan mestilah antara 0 hingga 604."
       );
+
       return;
     }
 
     if (
-      !Number.isInteger(groupNumber) ||
+      !Number.isInteger(
+        groupNumber
+      ) ||
       groupNumber < 1 ||
       groupNumber > 10
     ) {
       setError(
         "Kumpulan mestilah antara Kumpulan 1 hingga Kumpulan 10."
       );
+
       return;
     }
 
@@ -253,65 +386,121 @@ export default function DaftarMuridPage() {
     setError("");
     setSuccess("");
 
-    const { data, error } = await supabase.rpc(
-      "add_participant",
-      {
-        p_school_id: selectedSchoolId,
-        p_name: name,
-        p_starting_page: page,
-      }
-    );
+    // ---------------------------------------------------
+    // LANGKAH 1 - TAMBAH PESERTA
+    // ---------------------------------------------------
+
+    const {
+      data,
+      error,
+    } =
+      await supabase.rpc(
+        "add_participant",
+        {
+          p_school_id:
+            selectedSchoolId,
+
+          p_name:
+            name,
+
+          p_starting_page:
+            page,
+        }
+      );
 
     if (error) {
-      setError(error.message);
+      setError(
+        `LANGKAH TAMBAH PESERTA GAGAL: ${error.message}`
+      );
+
       setSavingParticipant(false);
+
       return;
     }
 
-    const newParticipant = (
-      Array.isArray(data) ? data[0] : data
-    ) as Participant | null;
+    const newParticipant =
+      (
+        Array.isArray(data)
+          ? data[0]
+          : data
+      ) as Participant | null;
 
     try {
-      if (!newParticipant?.id) {
+      // -------------------------------------------------
+      // SEMAK ID PESERTA
+      // -------------------------------------------------
+
+      if (
+        !newParticipant?.id
+      ) {
         throw new Error(
           "Peserta berjaya ditambah tetapi ID peserta tidak dapat diperoleh."
         );
       }
 
-      // Simpan kumpulan
-      const { error: groupError } =
+      // -------------------------------------------------
+      // LANGKAH 2 - SIMPAN KUMPULAN
+      // -------------------------------------------------
+
+      const {
+        error: groupError,
+      } =
         await supabase.rpc(
           "set_participant_group",
           {
-            p_participant_id: newParticipant.id,
-            p_group_number: groupNumber,
+            p_participant_id:
+              newParticipant.id,
+
+            p_group_number:
+              groupNumber,
           }
         );
 
       if (groupError) {
         throw new Error(
-          `Peserta ditambah tetapi kumpulan gagal disimpan: ${groupError.message}`
+          `LANGKAH SIMPAN KUMPULAN GAGAL: ${groupError.message}`
         );
       }
 
-      // Simpan gambar jika ada
-      if (newParticipantPhoto) {
+      // -------------------------------------------------
+      // LANGKAH 3 - SIMPAN GAMBAR
+      // -------------------------------------------------
+
+      if (
+        newParticipantPhoto
+      ) {
         await uploadParticipantPhoto(
           newParticipant.id,
           newParticipantPhoto
         );
       }
 
-      // Reset borang
-      setNewParticipantName("");
-      setStartingPage("0");
-      setNewParticipantPhoto(null);
+      // -------------------------------------------------
+      // RESET BORANG
+      // -------------------------------------------------
+
+      setNewParticipantName(
+        ""
+      );
+
+      setStartingPage(
+        "0"
+      );
+
+      setNewParticipantPhoto(
+        null
+      );
+
+      // -------------------------------------------------
+      // SUCCESS
+      // -------------------------------------------------
 
       setSuccess(
         `✅ Peserta "${name}" berjaya didaftarkan ke Kumpulan ${groupNumber}.`
       );
-    } catch (addError) {
+    } catch (
+      addError
+    ) {
       const message =
         addError instanceof Error
           ? addError.message
@@ -320,7 +509,9 @@ export default function DaftarMuridPage() {
       setError(message);
     }
 
-    setSavingParticipant(false);
+    setSavingParticipant(
+      false
+    );
   }
 
   // =====================================================
@@ -344,9 +535,11 @@ export default function DaftarMuridPage() {
 
       {/* HEADER */}
       <header className="border-b border-white/10 bg-slate-900">
+
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
 
           <div>
+
             <h1 className="text-lg font-black sm:text-xl">
               📖 QURAN RANKING{" "}
               <span className="text-emerald-400">
@@ -357,6 +550,7 @@ export default function DaftarMuridPage() {
             <p className="mt-1 text-[10px] text-slate-400 sm:text-xs">
               PROGRAM KHATAM MURID · PPD MACHANG
             </p>
+
           </div>
 
           <Link
@@ -367,6 +561,7 @@ export default function DaftarMuridPage() {
           </Link>
 
         </div>
+
       </header>
 
       {/* CONTENT */}
@@ -431,7 +626,9 @@ export default function DaftarMuridPage() {
           </div>
 
           <form
-            onSubmit={handleAddParticipant}
+            onSubmit={
+              handleAddParticipant
+            }
             className="grid gap-5 lg:grid-cols-2"
           >
 
@@ -443,8 +640,12 @@ export default function DaftarMuridPage() {
               </label>
 
               <select
-                value={selectedSchoolId}
-                onChange={(event) =>
+                value={
+                  selectedSchoolId
+                }
+                onChange={(
+                  event
+                ) =>
                   setSelectedSchoolId(
                     event.target.value
                   )
@@ -452,19 +653,34 @@ export default function DaftarMuridPage() {
                 className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
               >
 
-                {schools.length === 0 ? (
+                {schools.length ===
+                0 ? (
                   <option value="">
                     Tiada sekolah tersedia
                   </option>
                 ) : (
-                  schools.map((school) => (
-                    <option
-                      key={school.id}
-                      value={school.id}
-                    >
-                      {school.code} · {school.name}
-                    </option>
-                  ))
+                  schools.map(
+                    (
+                      school
+                    ) => (
+                      <option
+                        key={
+                          school.id
+                        }
+                        value={
+                          school.id
+                        }
+                      >
+                        {
+                          school.code
+                        }{" "}
+                        ·{" "}
+                        {
+                          school.name
+                        }
+                      </option>
+                    )
+                  )
                 )}
 
               </select>
@@ -479,8 +695,12 @@ export default function DaftarMuridPage() {
               </label>
 
               <select
-                value={newParticipantGroup}
-                onChange={(event) =>
+                value={
+                  newParticipantGroup
+                }
+                onChange={(
+                  event
+                ) =>
                   setNewParticipantGroup(
                     event.target.value
                   )
@@ -488,14 +708,17 @@ export default function DaftarMuridPage() {
                 className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
               >
 
-                {groups.map((group) => (
-                  <option
-                    key={group}
-                    value={group}
-                  >
-                    Kumpulan {group}
-                  </option>
-                ))}
+                {groups.map(
+                  (group) => (
+                    <option
+                      key={group}
+                      value={group}
+                    >
+                      Kumpulan{" "}
+                      {group}
+                    </option>
+                  )
+                )}
 
               </select>
 
@@ -509,8 +732,12 @@ export default function DaftarMuridPage() {
               </label>
 
               <input
-                value={newParticipantName}
-                onChange={(event) =>
+                value={
+                  newParticipantName
+                }
+                onChange={(
+                  event
+                ) =>
                   setNewParticipantName(
                     event.target.value
                   )
@@ -532,8 +759,12 @@ export default function DaftarMuridPage() {
                 type="number"
                 min="0"
                 max="604"
-                value={startingPage}
-                onChange={(event) =>
+                value={
+                  startingPage
+                }
+                onChange={(
+                  event
+                ) =>
                   setStartingPage(
                     event.target.value
                   )
@@ -545,7 +776,11 @@ export default function DaftarMuridPage() {
               <p className="mt-2 text-xs leading-5 text-slate-500">
                 Contoh: jika murid sudah membaca sehingga
                 muka surat 100 sebelum menyertai program,
-                masukkan <strong>100</strong>.
+                masukkan{" "}
+                <strong>
+                  100
+                </strong>
+                .
               </p>
 
               <p className="mt-1 text-xs text-slate-500">
@@ -583,7 +818,10 @@ export default function DaftarMuridPage() {
 
               {newParticipantPhoto && (
                 <p className="mt-2 text-xs font-semibold text-emerald-400">
-                  ✓ {newParticipantPhoto.name}
+                  ✓{" "}
+                  {
+                    newParticipantPhoto.name
+                  }
                 </p>
               )}
 
@@ -615,35 +853,53 @@ export default function DaftarMuridPage() {
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
 
           <div className="rounded-2xl border border-white/10 bg-slate-900 p-5">
-            <p className="text-2xl">🏫</p>
+
+            <p className="text-2xl">
+              🏫
+            </p>
+
             <p className="mt-2 font-bold">
               Pelbagai Sekolah
             </p>
+
             <p className="mt-1 text-xs leading-5 text-slate-500">
               Murid boleh didaftarkan daripada mana-mana
               sekolah yang aktif.
             </p>
+
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-slate-900 p-5">
-            <p className="text-2xl">👥</p>
+
+            <p className="text-2xl">
+              👥
+            </p>
+
             <p className="mt-2 font-bold">
               10 Kumpulan
             </p>
+
             <p className="mt-1 text-xs leading-5 text-slate-500">
               Pilih Kumpulan 1 hingga Kumpulan 10.
             </p>
+
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-slate-900 p-5">
-            <p className="text-2xl">📷</p>
+
+            <p className="text-2xl">
+              📷
+            </p>
+
             <p className="mt-2 font-bold">
               Gambar Murid
             </p>
+
             <p className="mt-1 text-xs leading-5 text-slate-500">
               Gambar akan dimampatkan secara automatik
               sebelum dimuat naik.
             </p>
+
           </div>
 
         </div>
@@ -661,6 +917,7 @@ export default function DaftarMuridPage() {
         </div>
 
       </section>
+
     </main>
   );
 }
