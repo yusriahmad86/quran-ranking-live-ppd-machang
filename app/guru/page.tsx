@@ -55,75 +55,6 @@ function getMalaysiaDate() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-async function compressImage(file: File) {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Sila pilih fail gambar.");
-  }
-
-  if (file.size > 15 * 1024 * 1024) {
-    throw new Error(
-      "Gambar asal terlalu besar. Had gambar asal ialah 15 MB."
-    );
-  }
-
-  const image = await createImageBitmap(file);
-
-  const maxDimension = 1600;
-
-  const scale = Math.min(
-    1,
-    maxDimension / Math.max(image.width, image.height)
-  );
-
-  const width = Math.max(1, Math.round(image.width * scale));
-  const height = Math.max(1, Math.round(image.height * scale));
-
-  const canvas = document.createElement("canvas");
-
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    image.close();
-    throw new Error("Gagal memproses gambar.");
-  }
-
-  context.drawImage(image, 0, 0, width, height);
-
-  image.close();
-
-  let quality = 0.85;
-  let blob: Blob | null = null;
-
-  while (quality >= 0.4) {
-    blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/jpeg", quality);
-    });
-
-    if (blob && blob.size <= 700 * 1024) {
-      break;
-    }
-
-    quality -= 0.1;
-  }
-
-  if (!blob) {
-    throw new Error("Gagal memampatkan gambar.");
-  }
-
-  if (blob.size > 3 * 1024 * 1024) {
-    throw new Error(
-      "Gambar masih melebihi had 3 MB selepas compression."
-    );
-  }
-
-  return new File([blob], "participant-photo.jpg", {
-    type: "image/jpeg",
-  });
-}
-
 export default function GuruPage() {
   const [schools, setSchools] = useState<School[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -132,20 +63,13 @@ export default function GuruPage() {
   const [selectedGroup, setSelectedGroup] = useState("1");
   const [pageInputs, setPageInputs] = useState<PageInputs>({});
 
-  const [selectedSchoolId, setSelectedSchoolId] = useState("");
-  const [newParticipantName, setNewParticipantName] = useState("");
-  const [startingPage, setStartingPage] = useState("0");
-  const [newParticipantPhoto, setNewParticipantPhoto] =
-    useState<File | null>(null);
-  const [newParticipantGroup, setNewParticipantGroup] = useState("1");
-
   const [selectedParticipantId, setSelectedParticipantId] =
     useState("");
+
   const [recordsParticipantId, setRecordsParticipantId] =
     useState("");
 
   const [loading, setLoading] = useState(true);
-  const [savingParticipant, setSavingParticipant] = useState(false);
   const [savingAllReadings, setSavingAllReadings] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -161,32 +85,42 @@ export default function GuruPage() {
   );
 
   // =====================================================
-  // STATUS SEBENAR BACAAN HARI INI
+  // STATUS BACAAN HARI INI
   // =====================================================
 
   const filledCount = participants.filter(
     (participant) => participant.has_read_today
   ).length;
 
-  const remainingCount = participants.length - filledCount;
+  const remainingCount =
+    participants.length - filledCount;
 
   const todayPages = useMemo(
     () =>
       records.reduce(
-        (total, record) => total + (record.pages_read ?? 0),
+        (total, record) =>
+          total + (record.pages_read ?? 0),
         0
       ),
     [records]
   );
 
-  const groups = Array.from({ length: 10 }, (_, index) => index + 1);
+  const groups = Array.from(
+    { length: 10 },
+    (_, index) => index + 1
+  );
 
-  function getSchoolForParticipant(participant: Participant) {
-    return schools.find((school) => school.id === participant.school_id);
+  function getSchoolForParticipant(
+    participant: Participant
+  ) {
+    return schools.find(
+      (school) =>
+        school.id === participant.school_id
+    );
   }
 
   // =====================================================
-  // LOAD SEKOLAH - GUNA RPC
+  // LOAD SEKOLAH
   // =====================================================
 
   async function loadSchools() {
@@ -202,20 +136,19 @@ export default function GuruPage() {
       return;
     }
 
-    const schoolData = (data ?? []) as School[];
+    const schoolData =
+      (data ?? []) as School[];
 
     setSchools(schoolData);
-
-    if (schoolData.length > 0) {
-      setSelectedSchoolId((current) => current || schoolData[0].id);
-    }
   }
 
   // =====================================================
-  // LOAD PESERTA MENGIKUT KUMPULAN - GUNA RPC
+  // LOAD PESERTA MENGIKUT KUMPULAN
   // =====================================================
 
-  async function loadParticipants(groupNumber: string) {
+  async function loadParticipants(
+    groupNumber: string
+  ) {
     if (!groupNumber) {
       setParticipants([]);
       setPageInputs({});
@@ -224,12 +157,14 @@ export default function GuruPage() {
 
     setError("");
 
-    const { data, error } = await supabase.rpc(
-      "get_group_participants",
-      {
-        p_group_number: Number(groupNumber),
-      }
-    );
+    const { data, error } =
+      await supabase.rpc(
+        "get_group_participants",
+        {
+          p_group_number:
+            Number(groupNumber),
+        }
+      );
 
     if (error) {
       setError(
@@ -239,9 +174,13 @@ export default function GuruPage() {
       return;
     }
 
-    const participantData = (data ?? []) as Participant[];
+    const participantData =
+      (data ?? []) as Participant[];
 
-    setParticipants(participantData);
+    setParticipants(
+      participantData
+    );
+
     setPageInputs({});
     setSelectedParticipantId("");
     setRecordsParticipantId("");
@@ -252,29 +191,50 @@ export default function GuruPage() {
   // LOAD REKOD BACAAN HARI INI
   // =====================================================
 
-  async function loadRecords(participantId: string) {
+  async function loadRecords(
+    participantId: string
+  ) {
     if (!participantId) {
       setRecords([]);
       return;
     }
 
-    const malaysiaDate = getMalaysiaDate();
+    const malaysiaDate =
+      getMalaysiaDate();
 
-    const { data, error } = await supabase
-      .from("reading_records")
-      .select(
-        "id, page_from, page_to, pages_read, reading_date, created_at"
-      )
-      .eq("participant_id", participantId)
-      .eq("reading_date", malaysiaDate)
-      .is("voided_at", null)
-      .eq("is_baseline", false)
-      .order("created_at", {
-        ascending: false,
-      });
+    const { data, error } =
+      await supabase
+        .from("reading_records")
+        .select(
+          "id, page_from, page_to, pages_read, reading_date, created_at"
+        )
+        .eq(
+          "participant_id",
+          participantId
+        )
+        .eq(
+          "reading_date",
+          malaysiaDate
+        )
+        .is(
+          "voided_at",
+          null
+        )
+        .eq(
+          "is_baseline",
+          false
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        );
 
     if (error) {
-      setError(`Gagal memuatkan rekod: ${error.message}`);
+      setError(
+        `Gagal memuatkan rekod: ${error.message}`
+      );
       return;
     }
 
@@ -289,40 +249,187 @@ export default function GuruPage() {
     participantId: string,
     file: File
   ) {
-    const compressedFile = await compressImage(file);
+    if (!file.type.startsWith("image/")) {
+      throw new Error(
+        "Sila pilih fail gambar."
+      );
+    }
 
-    const path = `${participantId}/profile.jpg`;
+    if (
+      file.size >
+      15 * 1024 * 1024
+    ) {
+      throw new Error(
+        "Gambar asal terlalu besar. Had gambar asal ialah 15 MB."
+      );
+    }
 
-    const { error: uploadError } = await supabase.storage
-      .from("participant-photos")
-      .upload(path, compressedFile, {
-        upsert: true,
-        contentType: "image/jpeg",
-        cacheControl: "3600",
-      });
+    const image =
+      await createImageBitmap(file);
+
+    const maxDimension = 1600;
+
+    const scale = Math.min(
+      1,
+      maxDimension /
+        Math.max(
+          image.width,
+          image.height
+        )
+    );
+
+    const width = Math.max(
+      1,
+      Math.round(
+        image.width * scale
+      )
+    );
+
+    const height = Math.max(
+      1,
+      Math.round(
+        image.height * scale
+      )
+    );
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context =
+      canvas.getContext("2d");
+
+    if (!context) {
+      image.close();
+
+      throw new Error(
+        "Gagal memproses gambar."
+      );
+    }
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      width,
+      height
+    );
+
+    image.close();
+
+    let quality = 0.85;
+    let blob: Blob | null = null;
+
+    while (quality >= 0.4) {
+      blob =
+        await new Promise<Blob | null>(
+          (resolve) => {
+            canvas.toBlob(
+              resolve,
+              "image/jpeg",
+              quality
+            );
+          }
+        );
+
+      if (
+        blob &&
+        blob.size <=
+          700 * 1024
+      ) {
+        break;
+      }
+
+      quality -= 0.1;
+    }
+
+    if (!blob) {
+      throw new Error(
+        "Gagal memampatkan gambar."
+      );
+    }
+
+    if (
+      blob.size >
+      3 * 1024 * 1024
+    ) {
+      throw new Error(
+        "Gambar masih melebihi had 3 MB selepas compression."
+      );
+    }
+
+    const compressedFile =
+      new File(
+        [blob],
+        "participant-photo.jpg",
+        {
+          type: "image/jpeg",
+        }
+      );
+
+    const path =
+      `${participantId}/profile.jpg`;
+
+    const {
+      error: uploadError,
+    } =
+      await supabase.storage
+        .from(
+          "participant-photos"
+        )
+        .upload(
+          path,
+          compressedFile,
+          {
+            upsert: true,
+            contentType:
+              "image/jpeg",
+            cacheControl:
+              "3600",
+          }
+        );
 
     if (uploadError) {
-      throw new Error(uploadError.message);
+      throw new Error(
+        uploadError.message
+      );
     }
 
     const {
-      data: { publicUrl },
-    } = supabase.storage
-      .from("participant-photos")
-      .getPublicUrl(path);
+      data: {
+        publicUrl,
+      },
+    } =
+      supabase.storage
+        .from(
+          "participant-photos"
+        )
+        .getPublicUrl(path);
 
-    const photoUrl = `${publicUrl}?v=${Date.now()}`;
+    const photoUrl =
+      `${publicUrl}?v=${Date.now()}`;
 
-    const { error: photoError } = await supabase.rpc(
-      "update_participant_photo",
-      {
-        p_participant_id: participantId,
-        p_photo_url: photoUrl,
-      }
-    );
+    const {
+      error: photoError,
+    } =
+      await supabase.rpc(
+        "update_participant_photo",
+        {
+          p_participant_id:
+            participantId,
+          p_photo_url:
+            photoUrl,
+        }
+      );
 
     if (photoError) {
-      throw new Error(photoError.message);
+      throw new Error(
+        photoError.message
+      );
     }
   }
 
@@ -348,7 +455,9 @@ export default function GuruPage() {
   // =====================================================
 
   useEffect(() => {
-    void loadParticipants(selectedGroup);
+    void loadParticipants(
+      selectedGroup
+    );
   }, [selectedGroup]);
 
   // =====================================================
@@ -361,127 +470,10 @@ export default function GuruPage() {
       return;
     }
 
-    void loadRecords(recordsParticipantId);
-  }, [recordsParticipantId]);
-
-  // =====================================================
-  // TAMBAH PESERTA
-  // =====================================================
-
-  async function handleAddParticipant(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-
-    const name = newParticipantName.trim();
-    const page = Number(startingPage);
-    const groupNumber = Number(newParticipantGroup);
-
-    if (!selectedSchoolId || !name) {
-      setError("Pilih sekolah dan masukkan nama peserta.");
-      return;
-    }
-
-    if (
-      !Number.isInteger(page) ||
-      page < 0 ||
-      page > 604
-    ) {
-      setError(
-        "Muka surat permulaan mestilah antara 0 hingga 604."
-      );
-      return;
-    }
-
-    if (
-      !Number.isInteger(groupNumber) ||
-      groupNumber < 1 ||
-      groupNumber > 10
-    ) {
-      setError(
-        "Kumpulan mestilah antara Kumpulan 1 hingga Kumpulan 10."
-      );
-      return;
-    }
-
-    setSavingParticipant(true);
-    setError("");
-    setSuccess("");
-
-    const { data, error } = await supabase.rpc(
-      "add_participant",
-      {
-        p_school_id: selectedSchoolId,
-        p_name: name,
-        p_starting_page: page,
-      }
+    void loadRecords(
+      recordsParticipantId
     );
-
-    if (error) {
-      setError(error.message);
-      setSavingParticipant(false);
-      return;
-    }
-
-    const newParticipant = (
-      Array.isArray(data) ? data[0] : data
-    ) as Participant | null;
-
-    try {
-      if (!newParticipant?.id) {
-        throw new Error(
-          "Peserta berjaya ditambah tetapi ID peserta tidak dapat diperoleh."
-        );
-      }
-
-      const { error: groupError } = await supabase.rpc(
-        "set_participant_group",
-        {
-          p_participant_id: newParticipant.id,
-          p_group_number: groupNumber,
-        }
-      );
-
-      if (groupError) {
-        throw new Error(
-          `Peserta ditambah tetapi kumpulan gagal disimpan: ${groupError.message}`
-        );
-      }
-
-      if (newParticipantPhoto) {
-        await uploadParticipantPhoto(
-          newParticipant.id,
-          newParticipantPhoto
-        );
-      }
-
-      setNewParticipantName("");
-      setStartingPage("0");
-      setNewParticipantPhoto(null);
-      setNewParticipantGroup(selectedGroup);
-
-      setSuccess(
-        `Peserta berjaya ditambah ke Kumpulan ${groupNumber}.`
-      );
-
-      if (String(groupNumber) === selectedGroup) {
-        await loadParticipants(selectedGroup);
-      }
-    } catch (addError) {
-      const message =
-        addError instanceof Error
-          ? addError.message
-          : "Gagal menyimpan peserta.";
-
-      setError(message);
-
-      if (String(groupNumber) === selectedGroup) {
-        await loadParticipants(selectedGroup);
-      }
-    }
-
-    setSavingParticipant(false);
-  }
+  }, [recordsParticipantId]);
 
   // =====================================================
   // INPUT MUKA SURAT
@@ -491,10 +483,13 @@ export default function GuruPage() {
     participantId: string,
     value: string
   ) {
-    setPageInputs((current) => ({
-      ...current,
-      [participantId]: value,
-    }));
+    setPageInputs(
+      (current) => ({
+        ...current,
+        [participantId]:
+          value,
+      })
+    );
 
     setError("");
     setSuccess("");
@@ -512,14 +507,25 @@ export default function GuruPage() {
     setError("");
     setSuccess("");
 
-    const entries = participants
-      .map((participant) => ({
-        participant,
-        value: pageInputs[participant.id]?.trim() ?? "",
-      }))
-      .filter((entry) => entry.value !== "");
+    const entries =
+      participants
+        .map(
+          (participant) => ({
+            participant,
+            value:
+              pageInputs[
+                participant.id
+              ]?.trim() ?? "",
+          })
+        )
+        .filter(
+          (entry) =>
+            entry.value !== ""
+        );
 
-    if (entries.length === 0) {
+    if (
+      entries.length === 0
+    ) {
       setError(
         "Sila masukkan sekurang-kurangnya satu muka surat."
       );
@@ -527,10 +533,13 @@ export default function GuruPage() {
     }
 
     for (const entry of entries) {
-      const pageTo = Number(entry.value);
+      const pageTo =
+        Number(entry.value);
 
       if (
-        !Number.isInteger(pageTo) ||
+        !Number.isInteger(
+          pageTo
+        ) ||
         pageTo < 1 ||
         pageTo > 604
       ) {
@@ -540,7 +549,11 @@ export default function GuruPage() {
         return;
       }
 
-      if (pageTo <= entry.participant.current_page) {
+      if (
+        pageTo <=
+        entry.participant
+          .current_page
+      ) {
         setError(
           `${entry.participant.name}: muka surat baharu (${pageTo}) mesti lebih daripada kemajuan semasa (${entry.participant.current_page}).`
         );
@@ -548,46 +561,65 @@ export default function GuruPage() {
       }
     }
 
-    setSavingAllReadings(true);
+    setSavingAllReadings(
+      true
+    );
 
-    const savedNames: string[] = [];
-    const failedNames: string[] = [];
+    const savedNames: string[] =
+      [];
 
-    for (const entry of entries) {
-      const pageTo = Number(entry.value);
+    const failedNames: string[] =
+      [];
 
-      const { error } = await supabase.rpc(
-        "record_reading",
-        {
-          p_participant_id: entry.participant.id,
-          p_page_to: pageTo,
-          p_note: null,
-        }
-      );
+    for (
+      const entry of entries
+    ) {
+      const pageTo =
+        Number(entry.value);
+
+      const {
+        error,
+      } =
+        await supabase.rpc(
+          "record_reading",
+          {
+            p_participant_id:
+              entry
+                .participant
+                .id,
+            p_page_to:
+              pageTo,
+            p_note:
+              null,
+          }
+        );
 
       if (error) {
         failedNames.push(
           `${entry.participant.name}: ${error.message}`
         );
       } else {
-        savedNames.push(entry.participant.name);
+        savedNames.push(
+          entry.participant.name
+        );
       }
     }
 
-    // ===================================================
-    // REFRESH DATA DARIPADA DATABASE
-    // supaya has_read_today berubah kepada true
-    // ===================================================
-
-    await loadParticipants(selectedGroup);
+    await loadParticipants(
+      selectedGroup
+    );
 
     setPageInputs({});
 
-    if (failedNames.length === 0) {
+    if (
+      failedNames.length === 0
+    ) {
       setSuccess(
         `✅ Semua bacaan berjaya disimpan untuk ${savedNames.length} peserta.`
       );
-    } else if (savedNames.length > 0) {
+    } else if (
+      savedNames.length > 0
+    ) {
       setSuccess(
         `✅ ${savedNames.length} bacaan berjaya disimpan.`
       );
@@ -605,7 +637,9 @@ export default function GuruPage() {
       );
     }
 
-    setSavingAllReadings(false);
+    setSavingAllReadings(
+      false
+    );
   }
 
   // =====================================================
@@ -615,8 +649,13 @@ export default function GuruPage() {
   function handleSelectParticipant(
     participantId: string
   ) {
-    setSelectedParticipantId(participantId);
-    setRecordsParticipantId(participantId);
+    setSelectedParticipantId(
+      participantId
+    );
+
+    setRecordsParticipantId(
+      participantId
+    );
 
     setError("");
     setSuccess("");
@@ -629,10 +668,16 @@ export default function GuruPage() {
   async function handleSelectedPhotoChange(
     event: ChangeEvent<HTMLInputElement>
   ) {
-    const file = event.target.files?.[0];
-    const participantId = selectedParticipantId;
+    const file =
+      event.target.files?.[0];
 
-    if (!file || !participantId) {
+    const participantId =
+      selectedParticipantId;
+
+    if (
+      !file ||
+      !participantId
+    ) {
       return;
     }
 
@@ -646,15 +691,24 @@ export default function GuruPage() {
         file
       );
 
-      await loadParticipants(selectedGroup);
+      await loadParticipants(
+        selectedGroup
+      );
 
-      setSelectedParticipantId(participantId);
-      setRecordsParticipantId(participantId);
+      setSelectedParticipantId(
+        participantId
+      );
+
+      setRecordsParticipantId(
+        participantId
+      );
 
       setSuccess(
         "Gambar peserta berjaya dikemas kini."
       );
-    } catch (uploadError) {
+    } catch (
+      uploadError
+    ) {
       const message =
         uploadError instanceof Error
           ? uploadError.message
@@ -686,7 +740,9 @@ export default function GuruPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
+      {/* HEADER */}
       <header className="border-b border-white/10 bg-slate-900">
+
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
 
           <div>
@@ -703,6 +759,7 @@ export default function GuruPage() {
           </div>
 
           <div className="flex gap-2">
+
             <Link
               href="/dashboard"
               className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 sm:px-4 sm:text-sm"
@@ -716,9 +773,11 @@ export default function GuruPage() {
             >
               🏆 Ranking
             </Link>
+
           </div>
 
         </div>
+
       </header>
 
       <section className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
@@ -735,19 +794,24 @@ export default function GuruPage() {
           Pilih kumpulan dan masukkan bacaan semua peserta secara pukal.
         </p>
 
+        {/* ERROR */}
         {error && (
           <div className="mt-6 whitespace-pre-line rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-300">
             ❌ {error}
           </div>
         )}
 
+        {/* SUCCESS */}
         {success && (
           <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-300">
             {success}
           </div>
         )}
 
-        {/* KUMPULAN */}
+        {/* =================================================
+            KUMPULAN
+        ================================================== */}
+
         <div className="mt-7 rounded-3xl border border-emerald-500/20 bg-slate-900 p-5 sm:p-7">
 
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
@@ -769,20 +833,25 @@ export default function GuruPage() {
               <select
                 value={selectedGroup}
                 onChange={(event) => {
-                  setSelectedGroup(event.target.value);
+                  setSelectedGroup(
+                    event.target.value
+                  );
+
                   setError("");
                   setSuccess("");
                 }}
                 className="mt-4 w-full rounded-2xl border border-white/10 bg-slate-800 px-4 py-4 text-base font-bold text-white outline-none focus:border-emerald-400 sm:text-lg"
               >
-                {groups.map((group) => (
-                  <option
-                    key={group}
-                    value={group}
-                  >
-                    Kumpulan {group}
-                  </option>
-                ))}
+                {groups.map(
+                  (group) => (
+                    <option
+                      key={group}
+                      value={group}
+                    >
+                      Kumpulan {group}
+                    </option>
+                  )
+                )}
               </select>
 
             </div>
@@ -822,18 +891,26 @@ export default function GuruPage() {
             </div>
 
           </div>
+
         </div>
 
-        {/* SENARAI PESERTA */}
+        {/* =================================================
+            SENARAI PESERTA
+        ================================================== */}
+
         <form
-          onSubmit={handleSubmitAllReadings}
+          onSubmit={
+            handleSubmitAllReadings
+          }
           className="mt-6"
         >
+
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-4 sm:p-7">
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
               <div>
+
                 <p className="text-xs font-semibold text-emerald-400">
                   LANGKAH 2
                 </p>
@@ -841,6 +918,7 @@ export default function GuruPage() {
                 <h3 className="mt-1 text-xl font-black sm:text-2xl">
                   📖 Masukkan Bacaan
                 </h3>
+
               </div>
 
               <div className="rounded-xl bg-emerald-500/10 px-4 py-3 text-xs text-emerald-300 sm:text-sm">
@@ -854,7 +932,10 @@ export default function GuruPage() {
               <div className="mt-5 space-y-3">
 
                 {participants.map(
-                  (participant, index) => {
+                  (
+                    participant,
+                    index
+                  ) => {
 
                     const school =
                       getSchoolForParticipant(
@@ -871,7 +952,9 @@ export default function GuruPage() {
 
                     return (
                       <div
-                        key={participant.id}
+                        key={
+                          participant.id
+                        }
                         className={`rounded-2xl border p-4 transition ${
                           participant.has_read_today
                             ? "border-emerald-500/30 bg-emerald-500/5"
@@ -887,8 +970,12 @@ export default function GuruPage() {
 
                             {participant.photo_url ? (
                               <img
-                                src={participant.photo_url}
-                                alt={participant.name}
+                                src={
+                                  participant.photo_url
+                                }
+                                alt={
+                                  participant.name
+                                }
                                 className="h-full w-full object-cover"
                               />
                             ) : (
@@ -906,14 +993,24 @@ export default function GuruPage() {
                               <div className="min-w-0">
 
                                 <p className="font-black leading-5">
-                                  {index + 1}.{" "}
-                                  {participant.name}
+                                  {index +
+                                    1}
+                                  .{" "}
+                                  {
+                                    participant.name
+                                  }
                                 </p>
 
                                 <p className="mt-1 truncate text-xs text-slate-500">
-                                  {school?.code ?? "—"} ·{" "}
-                                  {school?.name ??
-                                    "Sekolah tidak ditemui"}
+                                  {
+                                    school?.code ??
+                                    "—"
+                                  }{" "}
+                                  ·{" "}
+                                  {
+                                    school?.name ??
+                                    "Sekolah tidak ditemui"
+                                  }
                                 </p>
 
                               </div>
@@ -939,7 +1036,9 @@ export default function GuruPage() {
                                 </p>
 
                                 <p className="mt-1 text-xl font-black text-emerald-400">
-                                  {participant.current_page}
+                                  {
+                                    participant.current_page
+                                  }
 
                                   <span className="ml-1 text-xs font-medium text-slate-500">
                                     /604
@@ -962,11 +1061,17 @@ export default function GuruPage() {
                                   }
                                   max="604"
                                   inputMode="numeric"
-                                  value={inputValue}
-                                  onChange={(event) =>
+                                  value={
+                                    inputValue
+                                  }
+                                  onChange={(
+                                    event
+                                  ) =>
                                     handlePageInputChange(
                                       participant.id,
-                                      event.target.value
+                                      event
+                                        .target
+                                        .value
                                     )
                                   }
                                   placeholder={`> ${participant.current_page}`}
@@ -983,17 +1088,21 @@ export default function GuruPage() {
 
                             {participant.has_read_today && (
                               <div className="mt-3">
+
                                 <span className="rounded-lg bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
                                   📖 Bacaan hari ini telah direkodkan
                                 </span>
+
                               </div>
                             )}
 
                             {participant.grandmaster_at && (
                               <div className="mt-3">
+
                                 <span className="rounded-lg bg-yellow-500/10 px-3 py-1 text-xs font-black text-yellow-400">
                                   👑 GRANDMASTER
                                 </span>
+
                               </div>
                             )}
 
@@ -1022,7 +1131,11 @@ export default function GuruPage() {
                 </p>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Tambahkan peserta dan pilih kumpulan mereka.
+                  Sila gunakan menu{" "}
+                  <span className="font-bold text-emerald-400">
+                    Daftar Murid
+                  </span>{" "}
+                  di Dashboard untuk menambah peserta.
                 </p>
 
               </div>
@@ -1040,7 +1153,8 @@ export default function GuruPage() {
                   </span>
 
                   <span className="font-bold text-emerald-400">
-                    {filledCount} / {participants.length}
+                    {filledCount} /{" "}
+                    {participants.length}
                   </span>
 
                 </div>
@@ -1051,7 +1165,8 @@ export default function GuruPage() {
                     className="h-full rounded-full bg-emerald-500 transition-all"
                     style={{
                       width:
-                        participants.length > 0
+                        participants.length >
+                        0
                           ? `${Math.round(
                               (filledCount /
                                 participants.length) *
@@ -1067,20 +1182,27 @@ export default function GuruPage() {
                   type="submit"
                   disabled={
                     savingAllReadings ||
-                    participants.every(
-                      (participant) =>
+                    (participants.every(
+                      (
+                        participant
+                      ) =>
                         participant.has_read_today
                     ) &&
-                    participants.every(
-                      (participant) =>
-                        !pageInputs[participant.id]?.trim()
-                    )
+                      participants.every(
+                        (
+                          participant
+                        ) =>
+                          !pageInputs[
+                            participant
+                              .id
+                          ]?.trim()
+                      ))
                   }
                   className="w-full rounded-2xl bg-emerald-500 py-5 text-base font-black text-slate-950 shadow-lg shadow-emerald-500/10 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:text-lg"
                 >
                   {savingAllReadings
                     ? "⏳ Sedang menyimpan semua bacaan…"
-                    : `📖 HANTAR SEMUA BACAAN`}
+                    : "📖 HANTAR SEMUA BACAAN"}
                 </button>
 
               </div>
@@ -1088,190 +1210,16 @@ export default function GuruPage() {
             )}
 
           </div>
+
         </form>
 
-        {/* DAFTAR PESERTA */}
-        <div className="mt-6 rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
+        {/* =================================================
+            REKOD PESERTA
+        ================================================== */}
 
-          <p className="text-xs font-semibold text-emerald-400">
-            TAMBAH PESERTA
-          </p>
-
-          <h3 className="mt-1 text-xl font-black sm:text-2xl">
-            ➕ Daftar Peserta Baharu
-          </h3>
-
-          <p className="mt-1 text-sm text-slate-400">
-            Peserta boleh daripada mana-mana sekolah dan dimasukkan ke mana-mana kumpulan.
-          </p>
-
-          <form
-            onSubmit={handleAddParticipant}
-            className="mt-6 grid gap-4 lg:grid-cols-2"
-          >
-
-            {/* SEKOLAH */}
-            <div>
-
-              <label className="text-sm font-semibold text-slate-300">
-                Sekolah
-              </label>
-
-              <select
-                value={selectedSchoolId}
-                onChange={(event) =>
-                  setSelectedSchoolId(
-                    event.target.value
-                  )
-                }
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
-              >
-
-                {schools.length === 0 ? (
-                  <option value="">
-                    Tiada sekolah tersedia
-                  </option>
-                ) : (
-                  schools.map((school) => (
-                    <option
-                      key={school.id}
-                      value={school.id}
-                    >
-                      {school.code} · {school.name}
-                    </option>
-                  ))
-                )}
-
-              </select>
-
-            </div>
-
-            {/* KUMPULAN */}
-            <div>
-
-              <label className="text-sm font-semibold text-slate-300">
-                Kumpulan
-              </label>
-
-              <select
-                value={newParticipantGroup}
-                onChange={(event) =>
-                  setNewParticipantGroup(
-                    event.target.value
-                  )
-                }
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
-              >
-
-                {groups.map((group) => (
-                  <option
-                    key={group}
-                    value={group}
-                  >
-                    Kumpulan {group}
-                  </option>
-                ))}
-
-              </select>
-
-            </div>
-
-            {/* NAMA */}
-            <div>
-
-              <label className="text-sm font-semibold text-slate-300">
-                Nama Peserta
-              </label>
-
-              <input
-                value={newParticipantName}
-                onChange={(event) =>
-                  setNewParticipantName(
-                    event.target.value
-                  )
-                }
-                placeholder="Nama penuh peserta"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
-              />
-
-            </div>
-
-            {/* MUKA SURAT */}
-            <div>
-
-              <label className="text-sm font-semibold text-slate-300">
-                Muka Surat Permulaan
-              </label>
-
-              <input
-                type="number"
-                min="0"
-                max="604"
-                value={startingPage}
-                onChange={(event) =>
-                  setStartingPage(
-                    event.target.value
-                  )
-                }
-                placeholder="0"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
-              />
-
-              <p className="mt-2 text-xs text-slate-500">
-                Kemajuan awal tidak dikira sebagai bacaan hari ini.
-              </p>
-
-            </div>
-
-            {/* GAMBAR */}
-            <div className="lg:col-span-2">
-
-              <label className="text-sm font-semibold text-slate-300">
-                Gambar Peserta
-              </label>
-
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) =>
-                  setNewParticipantPhoto(
-                    event.target.files?.[0] ??
-                      null
-                  )
-                }
-                className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-emerald-400"
-              />
-
-              <p className="mt-2 text-xs text-slate-500">
-                Gambar akan dimampatkan secara automatik.
-              </p>
-
-            </div>
-
-            <div className="lg:col-span-2">
-
-              <button
-                type="submit"
-                disabled={
-                  savingParticipant ||
-                  !selectedSchoolId
-                }
-                className="w-full rounded-xl bg-emerald-500 py-4 font-bold text-slate-950 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-400"
-              >
-                {savingParticipant
-                  ? "⏳ Menyimpan peserta…"
-                  : "➕ Tambah Peserta"}
-              </button>
-
-            </div>
-
-          </form>
-
-        </div>
-
-        {/* REKOD PESERTA */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
 
+          {/* SEMAKAN */}
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
 
             <p className="text-xs font-semibold text-emerald-400">
@@ -1283,7 +1231,9 @@ export default function GuruPage() {
             </h3>
 
             <select
-              value={selectedParticipantId}
+              value={
+                selectedParticipantId
+              }
               onChange={(event) =>
                 handleSelectParticipant(
                   event.target.value
@@ -1296,15 +1246,27 @@ export default function GuruPage() {
                 — Pilih peserta —
               </option>
 
-              {participants.map((participant) => (
-                <option
-                  key={participant.id}
-                  value={participant.id}
-                >
-                  {participant.name} ·{" "}
-                  {participant.current_page}/604
-                </option>
-              ))}
+              {participants.map(
+                (participant) => (
+                  <option
+                    key={
+                      participant.id
+                    }
+                    value={
+                      participant.id
+                    }
+                  >
+                    {
+                      participant.name
+                    }{" "}
+                    ·{" "}
+                    {
+                      participant.current_page
+                    }
+                    /604
+                  </option>
+                )
+              )}
 
             </select>
 
@@ -1341,12 +1303,16 @@ export default function GuruPage() {
                     </p>
 
                     <p className="mt-1 text-xl font-black">
-                      {selectedParticipant.name}
+                      {
+                        selectedParticipant.name
+                      }
                     </p>
 
                     <p className="mt-2 text-emerald-400">
                       Kemajuan semasa:{" "}
-                      {selectedParticipant.current_page}{" "}
+                      {
+                        selectedParticipant.current_page
+                      }{" "}
                       / 604
                     </p>
 
@@ -1372,7 +1338,9 @@ export default function GuruPage() {
                     onChange={
                       handleSelectedPhotoChange
                     }
-                    disabled={uploadingPhoto}
+                    disabled={
+                      uploadingPhoto
+                    }
                     className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-emerald-400 disabled:opacity-50"
                   />
 
@@ -1398,10 +1366,13 @@ export default function GuruPage() {
             </h3>
 
             {recordsParticipant ? (
+
               <>
 
                 <p className="mt-4 text-lg font-bold">
-                  {recordsParticipant.name}
+                  {
+                    recordsParticipant.name
+                  }
                 </p>
 
                 <p className="mt-1 text-sm text-slate-500">
@@ -1418,25 +1389,37 @@ export default function GuruPage() {
 
                 <div className="mt-6 space-y-3">
 
-                  {records.length > 0 ? (
-                    records.map((record) => (
-                      <div
-                        key={record.id}
-                        className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3"
-                      >
+                  {records.length >
+                  0 ? (
+                    records.map(
+                      (record) => (
+                        <div
+                          key={
+                            record.id
+                          }
+                          className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3"
+                        >
 
-                        <span className="text-sm text-slate-300">
-                          {record.page_from}
-                          {" → "}
-                          {record.page_to}
-                        </span>
+                          <span className="text-sm text-slate-300">
+                            {
+                              record.page_from
+                            }
+                            {" → "}
+                            {
+                              record.page_to
+                            }
+                          </span>
 
-                        <span className="font-bold text-emerald-400">
-                          +{record.pages_read}
-                        </span>
+                          <span className="font-bold text-emerald-400">
+                            +
+                            {
+                              record.pages_read
+                            }
+                          </span>
 
-                      </div>
-                    ))
+                        </div>
+                      )
+                    )
                   ) : (
                     <p className="text-slate-500">
                       Belum ada rekod bacaan hari ini.
@@ -1446,10 +1429,13 @@ export default function GuruPage() {
                 </div>
 
               </>
+
             ) : (
+
               <p className="mt-5 text-slate-500">
                 Pilih peserta untuk melihat rekod hari ini.
               </p>
+
             )}
 
           </div>
@@ -1457,6 +1443,7 @@ export default function GuruPage() {
         </div>
 
       </section>
+
     </main>
   );
 }
