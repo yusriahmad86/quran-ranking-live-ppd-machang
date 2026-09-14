@@ -1,0 +1,63 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 512 512"
+>
+  <rect
+    width="512"
+    height="512"
+    rx="110"
+    fill="#020617"
+  />
+
+  <circle
+    cx="256"
+    cy="256"
+    r="190"
+    fill="#10b981"
+  />
+
+  <path
+    d="M145 165
+       L256 110
+       L367 165
+       L367 320
+       L256 395
+       L145 320
+       Z"
+    fill="#020617"
+  />
+
+  <path
+    d="M190 205
+       L256 170
+       L322 205
+       L322 290
+       L256 330
+       L190 290
+       Z"
+    fill="#10b981"
+  />
+
+  <path
+    d="M225 235
+       L256 218
+       L287 235
+       L287 270
+       L256 287
+       L225 270
+       Z"
+    fill="#ffffff"
+  />
+
+  <text
+    x="256"
+    y="450"
+    text-anchor="middle"
+    font-family="Arial, sans-serif"
+    font-size="32"
+    font-weight="700"
+    fill="#ffffff"
+  >
+    PPD
+  </text>
+</svg>
