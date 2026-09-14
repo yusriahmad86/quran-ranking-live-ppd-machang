@@ -8,13 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
-
 import { supabase } from "@/lib/supabase";
-
-
-/* ========================================= */
-/* TYPES */
-/* ========================================= */
 
 type School = {
   id: string;
@@ -28,7 +22,8 @@ type Participant = {
   photo_url: string | null;
   current_page: number;
   grandmaster_at: string | null;
-  is_active?: boolean;
+  school_id: string;
+  group_number: number | null;
 };
 
 type ReadingRecord = {
@@ -40,25 +35,7 @@ type ReadingRecord = {
   created_at: string;
 };
 
-type RankingSchool = {
-  position: number;
-  school_name: string;
-  participant_count: number;
-  average_pages: number;
-};
-
-type LiveRankings = {
-  date: string;
-  individual: unknown[];
-  schools: RankingSchool[];
-  overall: unknown[];
-  grandmasters: unknown[];
-};
-
-
-/* ========================================= */
-/* TARIKH MALAYSIA */
-/* ========================================= */
+type PageInputs = Record<string, string>;
 
 function getMalaysiaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -76,11 +53,6 @@ function getMalaysiaDate() {
 
   return `${values.year}-${values.month}-${values.day}`;
 }
-
-
-/* ========================================= */
-/* COMPRESS IMAGE */
-/* ========================================= */
 
 async function compressImage(file: File) {
   if (!file.type.startsWith("image/")) {
@@ -135,7 +107,6 @@ async function compressImage(file: File) {
   image.close();
 
   let quality = 0.85;
-
   let blob: Blob | null = null;
 
   while (quality >= 0.4) {
@@ -163,10 +134,7 @@ async function compressImage(file: File) {
     );
   }
 
-  if (
-    blob.size >
-    3 * 1024 * 1024
-  ) {
+  if (blob.size > 3 * 1024 * 1024) {
     throw new Error(
       "Gambar masih melebihi had 3 MB selepas compression."
     );
@@ -181,17 +149,10 @@ async function compressImage(file: File) {
   );
 }
 
-
-/* ========================================= */
-/* MAIN PAGE */
-/* ========================================= */
-
 export default function GuruPage() {
-
-
-  /* ========================================= */
-  /* STATE */
-  /* ========================================= */
+  // =====================================================
+  // DATA
+  // =====================================================
 
   const [schools, setSchools] =
     useState<School[]>([]);
@@ -202,43 +163,78 @@ export default function GuruPage() {
   const [records, setRecords] =
     useState<ReadingRecord[]>([]);
 
+  // =====================================================
+  // KUMPULAN
+  // =====================================================
 
-  const [selectedSchoolId, setSelectedSchoolId] =
-    useState("");
+  const [selectedGroup, setSelectedGroup] =
+    useState("1");
 
-  const [selectedParticipantId, setSelectedParticipantId] =
-    useState("");
+  const [pageInputs, setPageInputs] =
+    useState<PageInputs>({});
 
+  // =====================================================
+  // PESERTA BAHARU
+  // =====================================================
 
-  const [newParticipantName, setNewParticipantName] =
-    useState("");
+  const [
+    selectedSchoolId,
+    setSelectedSchoolId,
+  ] = useState("");
+
+  const [
+    newParticipantName,
+    setNewParticipantName,
+  ] = useState("");
 
   const [startingPage, setStartingPage] =
     useState("0");
 
-  const [newParticipantPhoto, setNewParticipantPhoto] =
-    useState<File | null>(null);
+  const [
+    newParticipantPhoto,
+    setNewParticipantPhoto,
+  ] = useState<File | null>(null);
 
+  const [
+    newParticipantGroup,
+    setNewParticipantGroup,
+  ] = useState("1");
 
-  const [newPage, setNewPage] =
-    useState("");
+  // =====================================================
+  // PESERTA DIPILIH
+  // =====================================================
 
-  const [note, setNote] =
-    useState("");
+  const [
+    selectedParticipantId,
+    setSelectedParticipantId,
+  ] = useState("");
 
+  const [
+    recordsParticipantId,
+    setRecordsParticipantId,
+  ] = useState("");
+
+  // =====================================================
+  // STATUS
+  // =====================================================
 
   const [loading, setLoading] =
     useState(true);
 
-  const [savingParticipant, setSavingParticipant] =
-    useState(false);
+  const [
+    savingParticipant,
+    setSavingParticipant,
+  ] = useState(false);
 
-  const [savingReading, setSavingReading] =
-    useState(false);
+  const [
+    savingAllReadings,
+    setSavingAllReadings,
+  ] = useState(false);
 
-  const [uploadingPhoto, setUploadingPhoto] =
-    useState(false);
-
+  const [
+    uploadingPhoto,
+    setUploadingPhoto,
+  ] = useState(false);
 
   const [error, setError] =
     useState("");
@@ -246,10 +242,9 @@ export default function GuruPage() {
   const [success, setSuccess] =
     useState("");
 
-
-  /* ========================================= */
-  /* SELECTED SCHOOL */
-  /* ========================================= */
+  // =====================================================
+  // DATA PILIHAN
+  // =====================================================
 
   const selectedSchool =
     schools.find(
@@ -257,267 +252,172 @@ export default function GuruPage() {
         school.id === selectedSchoolId
     );
 
-
-  /* ========================================= */
-  /* SELECTED PARTICIPANT */
-  /* ========================================= */
-
   const selectedParticipant =
     participants.find(
       (participant) =>
-        participant.id === selectedParticipantId
+        participant.id ===
+        selectedParticipantId
     );
 
-
-  /* ========================================= */
-  /* JUMLAH BACAAN HARI INI */
-  /* ========================================= */
-
-  const todayPages =
-    useMemo(
-      () =>
-        records.reduce(
-          (total, record) =>
-            total +
-            record.pages_read,
-          0
-        ),
-      [records]
+  const recordsParticipant =
+    participants.find(
+      (participant) =>
+        participant.id ===
+        recordsParticipantId
     );
 
+  // =====================================================
+  // KIRAAN INPUT
+  // =====================================================
 
-  /* ========================================= */
-  /* LOAD SCHOOLS */
-  /* ========================================= */
+  const filledCount =
+    participants.filter(
+      (participant) => {
+        const value =
+          pageInputs[
+            participant.id
+          ]?.trim() ?? "";
+
+        return value !== "";
+      }
+    ).length;
+
+  const remainingCount =
+    participants.length -
+    filledCount;
+
+  const todayPages = useMemo(
+    () =>
+      records.reduce(
+        (total, record) =>
+          total +
+          (record.pages_read ?? 0),
+        0
+      ),
+    [records]
+  );
+
+  // =====================================================
+  // SENARAI KUMPULAN
+  // =====================================================
+
+  const groups = Array.from(
+    { length: 10 },
+    (_, index) => index + 1
+  );
+
+  // =====================================================
+  // DAPATKAN SEKOLAH PESERTA
+  // =====================================================
+
+  function getSchoolForParticipant(
+    participant: Participant
+  ) {
+    return schools.find(
+      (school) =>
+        school.id ===
+        participant.school_id
+    );
+  }
+
+  // =====================================================
+  // LOAD SEKOLAH
+  // =====================================================
 
   async function loadSchools() {
-
-    /*
-     * PENTING:
-     *
-     * Kita ambil data sekolah daripada
-     * RPC yang sama digunakan oleh /ranking.
-     *
-     * Ini memastikan /guru dan /ranking
-     * menggunakan sumber data yang sama.
-     */
-
-    const {
-      data,
-      error,
-    } =
-      await supabase.rpc(
-        "get_live_rankings"
-      );
-
-
-    if (error) {
-
-      setError(
-        `Gagal mendapatkan senarai sekolah: ${error.message}`
-      );
-
-      return;
-    }
-
-
-    const rankings =
-      data as LiveRankings;
-
-
-    const rankingSchools =
-      rankings?.schools ?? [];
-
-
-    /*
-     * RPC memberikan school_name tetapi
-     * kita masih perlukan ID sekolah.
-     *
-     * Jadi selepas mendapat nama sekolah
-     * daripada RPC, kita ambil ID sekolah
-     * melalui query schools.
-     */
-
-    const {
-      data: schoolRows,
-      error: schoolError,
-    } =
+    const { data, error } =
       await supabase
         .from("schools")
         .select(
           "id, code, name"
         )
+        .eq(
+          "is_active",
+          true
+        )
         .order("code");
 
-
-    if (schoolError) {
-
-      setError(
-        `Ranking berjaya dibaca tetapi senarai sekolah gagal dimuatkan: ${schoolError.message}`
-      );
-
+    if (error) {
+      setError(error.message);
       return;
     }
 
-
-    const activeSchoolNames =
-      new Set(
-        rankingSchools.map(
-          (school) =>
-            school.school_name
-        )
-      );
-
-
-    /*
-     * Jika RPC mempunyai data sekolah,
-     * gunakan sekolah yang wujud dalam ranking.
-     *
-     * Jika belum ada ranking untuk sekolah tertentu,
-     * fallback kepada semua sekolah daripada
-     * jadual schools.
-     */
-
-    let finalSchools =
-      schoolRows ?? [];
-
+    setSchools(data ?? []);
 
     if (
-      activeSchoolNames.size > 0
+      data &&
+      data.length > 0
     ) {
-
-      const matchingSchools =
-        (schoolRows ?? []).filter(
-          (school) =>
-            activeSchoolNames.has(
-              school.name
-            )
-        );
-
-
-      if (
-        matchingSchools.length > 0
-      ) {
-        finalSchools =
-          matchingSchools;
-      }
-    }
-
-
-    setSchools(
-      finalSchools
-    );
-
-
-    /*
-     * Pilih sekolah pertama
-     * secara automatik.
-     */
-
-    if (
-      finalSchools.length > 0
-    ) {
-
       setSelectedSchoolId(
         (current) =>
-          current ||
-          finalSchools[0].id
+          current || data[0].id
       );
-
     }
-
   }
 
-
-  /* ========================================= */
-  /* LOAD PARTICIPANTS */
-  /* ========================================= */
+  // =====================================================
+  // LOAD PESERTA MENGIKUT KUMPULAN
+  // =====================================================
 
   async function loadParticipants(
-    schoolId: string
+    groupNumber: string
   ) {
-
-    if (!schoolId) {
-
+    if (!groupNumber) {
       setParticipants([]);
-
-      setSelectedParticipantId("");
-
+      setPageInputs({});
       return;
     }
 
-
-    const {
-      data,
-      error,
-    } =
+    const { data, error } =
       await supabase
         .from("participants")
         .select(
-          "id, name, photo_url, current_page, grandmaster_at, is_active"
+          "id, name, photo_url, current_page, grandmaster_at, school_id, group_number"
         )
         .eq(
-          "school_id",
-          schoolId
+          "group_number",
+          Number(groupNumber)
         )
         .eq(
           "is_active",
           true
         )
-        .order(
-          "current_page",
-          {
-            ascending: false,
-          }
-        )
-        .order(
-          "name"
-        );
-
+        .order("name");
 
     if (error) {
-
-      setError(
-        `Gagal mendapatkan peserta: ${error.message}`
-      );
-
-      setParticipants([]);
-
+      setError(error.message);
       return;
     }
 
-
     setParticipants(
-      data ?? []
+      (data ?? []) as Participant[]
     );
+
+    setPageInputs({});
 
     setSelectedParticipantId("");
 
-    setRecords([]);
+    setRecordsParticipantId("");
 
+    setRecords([]);
   }
 
-
-  /* ========================================= */
-  /* LOAD RECORDS */
-  /* ========================================= */
+  // =====================================================
+  // LOAD REKOD BACAAN HARI INI
+  // =====================================================
 
   async function loadRecords(
     participantId: string
   ) {
-
     if (!participantId) {
-
       setRecords([]);
-
       return;
     }
 
+    const malaysiaDate =
+      getMalaysiaDate();
 
-    const {
-      data,
-      error,
-    } =
+    const { data, error } =
       await supabase
         .from("reading_records")
         .select(
@@ -529,7 +429,7 @@ export default function GuruPage() {
         )
         .eq(
           "reading_date",
-          getMalaysiaDate()
+          malaysiaDate
         )
         .is(
           "voided_at",
@@ -546,69 +446,51 @@ export default function GuruPage() {
           }
         );
 
-
     if (error) {
-
-      setError(
-        `Gagal mendapatkan rekod bacaan: ${error.message}`
-      );
-
+      setError(error.message);
       return;
     }
 
-
-    setRecords(
-      data ?? []
-    );
-
+    setRecords(data ?? []);
   }
 
-
-  /* ========================================= */
-  /* UPLOAD PHOTO */
-  /* ========================================= */
+  // =====================================================
+  // UPLOAD GAMBAR
+  // =====================================================
 
   async function uploadParticipantPhoto(
     participantId: string,
     file: File
   ) {
-
     const compressedFile =
       await compressImage(file);
-
 
     const path =
       `${participantId}/profile.jpg`;
 
-
     const {
       error: uploadError,
-    } =
-      await supabase.storage
-        .from(
-          "participant-photos"
-        )
-        .upload(
-          path,
-          compressedFile,
-          {
-            upsert: true,
-            contentType:
-              "image/jpeg",
-            cacheControl:
-              "3600",
-          }
-        );
-
+    } = await supabase.storage
+      .from(
+        "participant-photos"
+      )
+      .upload(
+        path,
+        compressedFile,
+        {
+          upsert: true,
+          contentType:
+            "image/jpeg",
+          cacheControl:
+            "3600",
+        }
+      );
 
     if (uploadError) {
-
       throw new Error(
         uploadError.message
       );
-
     }
-
 
     const {
       data: {
@@ -619,189 +501,151 @@ export default function GuruPage() {
         .from(
           "participant-photos"
         )
-        .getPublicUrl(
-          path
-        );
-
+        .getPublicUrl(path);
 
     const photoUrl =
       `${publicUrl}?v=${Date.now()}`;
 
-
     const {
       error: photoError,
-    } =
-      await supabase.rpc(
-        "update_participant_photo",
-        {
-          p_participant_id:
-            participantId,
-
-          p_photo_url:
-            photoUrl,
-        }
-      );
-
+    } = await supabase.rpc(
+      "update_participant_photo",
+      {
+        p_participant_id:
+          participantId,
+        p_photo_url:
+          photoUrl,
+      }
+    );
 
     if (photoError) {
-
       throw new Error(
         photoError.message
       );
-
     }
-
   }
 
-
-  /* ========================================= */
-  /* INITIALISE */
-  /* ========================================= */
+  // =====================================================
+  // INITIALISE
+  // =====================================================
 
   useEffect(() => {
-
     async function initialise() {
-
       setLoading(true);
-
       setError("");
 
       await loadSchools();
 
       setLoading(false);
-
     }
 
-
     void initialise();
-
   }, []);
 
-
-  /* ========================================= */
-  /* SCHOOL CHANGED */
-  /* ========================================= */
+  // =====================================================
+  // BILA KUMPULAN BERUBAH
+  // =====================================================
 
   useEffect(() => {
+    void loadParticipants(
+      selectedGroup
+    );
+  }, [selectedGroup]);
 
-    if (!selectedSchoolId) {
+  // =====================================================
+  // BILA PESERTA REKOD BERUBAH
+  // =====================================================
 
+  useEffect(() => {
+    if (!recordsParticipantId) {
+      setRecords([]);
       return;
     }
 
-    void loadParticipants(
-      selectedSchoolId
-    );
-
-  }, [
-    selectedSchoolId,
-  ]);
-
-
-  /* ========================================= */
-  /* PARTICIPANT CHANGED */
-  /* ========================================= */
-
-  useEffect(() => {
-
     void loadRecords(
-      selectedParticipantId
+      recordsParticipantId
     );
+  }, [recordsParticipantId]);
 
-  }, [
-    selectedParticipantId,
-  ]);
-
-
-  /* ========================================= */
-  /* ADD PARTICIPANT */
-  /* ========================================= */
+  // =====================================================
+  // TAMBAH PESERTA
+  // =====================================================
 
   async function handleAddParticipant(
     event: FormEvent<HTMLFormElement>
   ) {
-
     event.preventDefault();
-
 
     const name =
       newParticipantName.trim();
 
-
     const page =
-      Number(
-        startingPage
-      );
+      Number(startingPage);
 
+    const groupNumber =
+      Number(newParticipantGroup);
 
     if (
       !selectedSchoolId ||
       !name
     ) {
-
       setError(
         "Pilih sekolah dan masukkan nama peserta."
       );
-
       return;
     }
-
 
     if (
       !Number.isInteger(page) ||
       page < 0 ||
       page > 604
     ) {
-
       setError(
         "Muka surat permulaan mestilah antara 0 hingga 604."
       );
-
       return;
     }
 
+    if (
+      !Number.isInteger(
+        groupNumber
+      ) ||
+      groupNumber < 1 ||
+      groupNumber > 10
+    ) {
+      setError(
+        "Kumpulan mestilah antara Kumpulan 1 hingga Kumpulan 10."
+      );
+      return;
+    }
 
-    setSavingParticipant(
-      true
-    );
-
+    setSavingParticipant(true);
     setError("");
-
     setSuccess("");
-
 
     const {
       data,
       error,
-    } =
-      await supabase.rpc(
-        "add_participant",
-        {
-          p_school_id:
-            selectedSchoolId,
-
-          p_name:
-            name,
-
-          p_starting_page:
-            page,
-        }
-      );
-
+    } = await supabase.rpc(
+      "add_participant",
+      {
+        p_school_id:
+          selectedSchoolId,
+        p_name: name,
+        p_starting_page:
+          page,
+      }
+    );
 
     if (error) {
-
       setError(
         error.message
       );
 
-      setSavingParticipant(
-        false
-      );
+      setSavingParticipant(false);
 
       return;
     }
-
 
     const newParticipant =
       (
@@ -810,21 +654,41 @@ export default function GuruPage() {
           : data
       ) as Participant | null;
 
-
     try {
+      if (
+        !newParticipant?.id
+      ) {
+        throw new Error(
+          "Peserta berjaya ditambah tetapi ID peserta tidak dapat diperoleh."
+        );
+      }
+
+      const {
+        error: groupError,
+      } = await supabase.rpc(
+        "set_participant_group",
+        {
+          p_participant_id:
+            newParticipant.id,
+          p_group_number:
+            groupNumber,
+        }
+      );
+
+      if (groupError) {
+        throw new Error(
+          `Peserta ditambah tetapi kumpulan gagal disimpan: ${groupError.message}`
+        );
+      }
 
       if (
-        newParticipantPhoto &&
-        newParticipant?.id
+        newParticipantPhoto
       ) {
-
         await uploadParticipantPhoto(
           newParticipant.id,
           newParticipantPhoto
         );
-
       }
-
 
       setNewParticipantName("");
 
@@ -834,221 +698,273 @@ export default function GuruPage() {
         null
       );
 
+      setNewParticipantGroup(
+        selectedGroup
+      );
 
       setSuccess(
-        "Peserta berjaya ditambah. Muka surat permulaan tidak dikira sebagai bacaan hari ini."
+        `Peserta berjaya ditambah ke Kumpulan ${groupNumber}.`
       );
 
-
-      await loadParticipants(
-        selectedSchoolId
-      );
+      if (
+        String(groupNumber) ===
+        selectedGroup
+      ) {
+        await loadParticipants(
+          selectedGroup
+        );
+      }
 
     } catch (
-      uploadError
+      addError
     ) {
-
       const message =
-        uploadError instanceof Error
-          ? uploadError.message
-          : "Gagal memuat naik gambar.";
+        addError instanceof Error
+          ? addError.message
+          : "Gagal menyimpan peserta.";
 
+      setError(message);
 
-      setError(
-        `Peserta berjaya ditambah, tetapi gambar gagal dimuat naik: ${message}`
-      );
-
-
-      await loadParticipants(
-        selectedSchoolId
-      );
-
+      if (
+        String(groupNumber) ===
+        selectedGroup
+      ) {
+        await loadParticipants(
+          selectedGroup
+        );
+      }
     }
-
 
     setSavingParticipant(
       false
     );
-
   }
 
+  // =====================================================
+  // TUKAR INPUT MUKA SURAT
+  // =====================================================
 
-  /* ========================================= */
-  /* RECORD READING */
-  /* ========================================= */
-
-  async function handleRecordReading(
-    event: FormEvent<HTMLFormElement>
+  function handlePageInputChange(
+    participantId: string,
+    value: string
   ) {
-
-    event.preventDefault();
-
-
-    const pageTo =
-      Number(
-        newPage
-      );
-
-
-    if (
-      !selectedParticipant
-    ) {
-
-      setError(
-        "Sila pilih peserta dahulu."
-      );
-
-      return;
-    }
-
-
-    if (
-      !Number.isInteger(
-        pageTo
-      )
-    ) {
-
-      setError(
-        "Masukkan nombor muka surat yang sah."
-      );
-
-      return;
-    }
-
-
-    setSavingReading(
-      true
+    setPageInputs(
+      (current) => ({
+        ...current,
+        [participantId]:
+          value,
+      })
     );
 
     setError("");
+    setSuccess("");
+  }
 
+  // =====================================================
+  // HANTAR SEMUA BACAAN
+  // =====================================================
+
+  async function handleSubmitAllReadings(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setError("");
     setSuccess("");
 
+    const entries =
+      participants
+        .map(
+          (participant) => ({
+            participant,
+            value:
+              pageInputs[
+                participant.id
+              ]?.trim() ?? "",
+          })
+        )
+        .filter(
+          (entry) =>
+            entry.value !== ""
+        );
 
-    const {
-      data: savedRecord,
-      error,
-    } =
-      await supabase.rpc(
-        "record_reading",
-        {
-          p_participant_id:
-            selectedParticipant.id,
-
-          p_page_to:
-            pageTo,
-
-          p_note:
-            note.trim() ||
-            null,
-        }
-      );
-
-
-    if (error) {
-
+    if (
+      entries.length === 0
+    ) {
       setError(
-        error.message
+        "Sila masukkan sekurang-kurangnya satu muka surat."
       );
-
-      setSavingReading(
-        false
-      );
-
       return;
     }
 
+    // =================================================
+    // VALIDASI
+    // =================================================
 
-    const isBaseline =
-      !Array.isArray(
-        savedRecord
-      ) &&
-      savedRecord?.is_baseline ===
-        true;
+    for (const entry of entries) {
+      const pageTo =
+        Number(entry.value);
 
+      if (
+        !Number.isInteger(
+          pageTo
+        ) ||
+        pageTo < 1 ||
+        pageTo > 604
+      ) {
+        setError(
+          `Muka surat untuk ${entry.participant.name} mestilah antara 1 hingga 604.`
+        );
+        return;
+      }
 
-    setNewPage("");
+      if (
+        pageTo <=
+        entry.participant.current_page
+      ) {
+        setError(
+          `${entry.participant.name}: muka surat baharu (${pageTo}) mesti lebih daripada kemajuan semasa (${entry.participant.current_page}).`
+        );
+        return;
+      }
+    }
 
-    setNote("");
-
-
-    setSuccess(
-      isBaseline
-        ? "Kemajuan awal berjaya disimpan sebagai baseline dan tidak dikira untuk hari ini."
-        : "Bacaan berjaya direkodkan."
+    setSavingAllReadings(
+      true
     );
 
+    const savedNames: string[] = [];
+    const failedNames: string[] = [];
 
-    await Promise.all([
-      loadParticipants(
-        selectedSchoolId
-      ),
+    // =================================================
+    // SIMPAN SEMUA
+    // =================================================
 
-      loadRecords(
-        selectedParticipant.id
-      ),
-    ]);
+    for (const entry of entries) {
+      const pageTo =
+        Number(entry.value);
 
+      const {
+        error,
+      } = await supabase.rpc(
+        "record_reading",
+        {
+          p_participant_id:
+            entry.participant.id,
+          p_page_to:
+            pageTo,
+          p_note: null,
+        }
+      );
 
-    setSelectedParticipantId(
-      selectedParticipant.id
+      if (error) {
+        failedNames.push(
+          `${entry.participant.name}: ${error.message}`
+        );
+      } else {
+        savedNames.push(
+          entry.participant.name
+        );
+      }
+    }
+
+    await loadParticipants(
+      selectedGroup
     );
 
+    setPageInputs({});
 
-    setSavingReading(
+    if (
+      failedNames.length === 0
+    ) {
+      setSuccess(
+        `✅ Semua bacaan berjaya disimpan untuk ${savedNames.length} peserta.`
+      );
+    } else if (
+      savedNames.length > 0
+    ) {
+      setSuccess(
+        `✅ ${savedNames.length} bacaan berjaya disimpan.`
+      );
+
+      setError(
+        `⚠️ ${failedNames.length} bacaan gagal:\n${failedNames.join(
+          "\n"
+        )}`
+      );
+    } else {
+      setError(
+        `❌ Semua bacaan gagal disimpan:\n${failedNames.join(
+          "\n"
+        )}`
+      );
+    }
+
+    setSavingAllReadings(
       false
     );
-
   }
 
+  // =====================================================
+  // PILIH PESERTA UNTUK LIHAT REKOD
+  // =====================================================
 
-  /* ========================================= */
-  /* CHANGE SELECTED PHOTO */
-  /* ========================================= */
+  function handleSelectParticipant(
+    participantId: string
+  ) {
+    setSelectedParticipantId(
+      participantId
+    );
+
+    setRecordsParticipantId(
+      participantId
+    );
+
+    setError("");
+    setSuccess("");
+  }
+
+  // =====================================================
+  // TUKAR GAMBAR PESERTA
+  // =====================================================
 
   async function handleSelectedPhotoChange(
     event: ChangeEvent<HTMLInputElement>
   ) {
-
     const file =
       event.target.files?.[0];
 
+    const participantId =
+      selectedParticipantId;
 
     if (
       !file ||
-      !selectedParticipant
+      !participantId
     ) {
-
       return;
     }
 
-
-    setUploadingPhoto(
-      true
-    );
-
+    setUploadingPhoto(true);
     setError("");
-
     setSuccess("");
 
-
     try {
-
       await uploadParticipantPhoto(
-        selectedParticipant.id,
+        participantId,
         file
       );
 
-
       await loadParticipants(
-        selectedSchoolId
+        selectedGroup
       );
-
 
       setSelectedParticipantId(
-        selectedParticipant.id
+        participantId
       );
 
+      setRecordsParticipantId(
+        participantId
+      );
 
       setSuccess(
         "Gambar peserta berjaya dikemas kini."
@@ -1057,103 +973,75 @@ export default function GuruPage() {
     } catch (
       uploadError
     ) {
-
       const message =
         uploadError instanceof Error
           ? uploadError.message
           : "Gagal memuat naik gambar.";
 
-
-      setError(
-        message
-      );
-
+      setError(message);
     }
 
-
-    event.target.value =
-      "";
+    event.target.value = "";
 
     setUploadingPhoto(
       false
     );
-
   }
 
-
-  /* ========================================= */
-  /* LOADING */
-  /* ========================================= */
+  // =====================================================
+  // LOADING
+  // =====================================================
 
   if (loading) {
-
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-
-        <div className="text-center">
-
-          <div className="text-5xl">
-            📖
-          </div>
-
-          <p className="mt-4 font-semibold">
-            Memuatkan pengisian bacaan…
-          </p>
-
-        </div>
-
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-white">
+        Memuatkan pengisian bacaan…
       </main>
     );
-
   }
 
-
-  /* ========================================= */
-  /* PAGE */
-  /* ========================================= */
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
-
-      {/* HEADER */}
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
       <header className="border-b border-white/10 bg-slate-900">
 
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
 
           <div>
 
-            <h1 className="text-xl font-black">
-
+            <h1 className="text-lg font-black sm:text-xl">
               📖 QURAN RANKING{" "}
-
               <span className="text-emerald-400">
                 LIVE
               </span>
-
             </h1>
 
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-[10px] text-slate-400 sm:text-xs">
               PROGRAM KHATAM MURID · PPD MACHANG
             </p>
 
           </div>
 
-
-          <div className="flex gap-3">
+          <div className="flex gap-2">
 
             <Link
               href="/dashboard"
-              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/20"
+              className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 sm:px-4 sm:text-sm"
             >
               Dashboard
             </Link>
 
-
             <Link
               href="/ranking"
-              className="rounded-xl bg-yellow-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-yellow-400"
+              className="rounded-xl bg-yellow-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-yellow-400 sm:px-4 sm:text-sm"
             >
               🏆 Ranking
             </Link>
@@ -1165,111 +1053,383 @@ export default function GuruPage() {
       </header>
 
 
-      {/* CONTENT */}
+      {/* =================================================
+          CONTENT
+      ================================================= */}
 
-      <section className="mx-auto max-w-6xl px-6 py-10">
+      <section className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
 
-
-        <p className="font-semibold text-emerald-400">
+        <p className="text-sm font-semibold text-emerald-400">
           PENGISIAN BACAAN
         </p>
 
-
-        <h2 className="mt-2 text-4xl font-black">
-          Rekod Bacaan Peserta
+        <h2 className="mt-2 text-3xl font-black sm:text-4xl">
+          Rekod Bacaan Kumpulan
         </h2>
 
-
-        <p className="mt-2 text-slate-400">
-          Pilih sekolah, pilih peserta, kemudian masukkan muka surat semasa.
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+          Pilih kumpulan dan masukkan bacaan semua peserta secara pukal.
         </p>
 
 
         {/* ERROR */}
 
         {error && (
-
-          <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
-
+          <div className="mt-6 whitespace-pre-line rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-300">
             ❌ {error}
-
           </div>
-
         )}
 
 
         {/* SUCCESS */}
 
         {success && (
-
-          <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300">
-
-            ✅ {success}
-
+          <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-300">
+            {success}
           </div>
-
         )}
 
 
-        {/* ===================================== */}
-        {/* SCHOOL + PARTICIPANT */}
-        {/* ===================================== */}
+        {/* =================================================
+            PILIH KUMPULAN
+        ================================================= */}
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <div className="mt-7 rounded-3xl border border-emerald-500/20 bg-slate-900 p-5 sm:p-7">
 
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
 
-          {/* SEKOLAH */}
+            <div className="w-full flex-1">
 
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+              <p className="text-xs font-semibold text-emerald-400">
+                LANGKAH 1
+              </p>
 
-            <h3 className="text-xl font-bold">
-              1. Pilih Sekolah
-            </h3>
+              <h3 className="mt-1 text-xl font-black sm:text-2xl">
+                📋 Pilih Kumpulan
+              </h3>
 
-
-            {schools.length > 0 ? (
+              <p className="mt-1 text-sm text-slate-400">
+                Setiap kumpulan boleh mengandungi peserta daripada pelbagai sekolah.
+              </p>
 
               <select
-                value={selectedSchoolId}
+                value={
+                  selectedGroup
+                }
                 onChange={(event) => {
-
-                  setSelectedSchoolId(
+                  setSelectedGroup(
                     event.target.value
                   );
 
                   setError("");
-
                   setSuccess("");
-
                 }}
-                className="mt-5 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-slate-800 px-4 py-4 text-base font-bold text-white outline-none focus:border-emerald-400 sm:text-lg"
               >
 
-                {schools.map(
-                  (school) => (
-
+                {groups.map(
+                  (group) => (
                     <option
-                      key={school.id}
-                      value={school.id}
+                      key={group}
+                      value={group}
                     >
-                      {school.code} · {school.name}
+                      Kumpulan {group}
                     </option>
-
                   )
                 )}
 
               </select>
 
-            ) : (
+            </div>
 
-              <div className="mt-5 rounded-xl bg-red-500/10 border border-red-500/20 p-4">
 
-                <p className="font-semibold text-red-300">
-                  Tiada sekolah ditemui.
+            {/* STAT PESERTA */}
+
+            <div className="grid grid-cols-3 gap-2 md:w-[360px]">
+
+              <div className="rounded-2xl bg-slate-800 p-3 text-center sm:p-4">
+
+                <p className="text-[10px] font-bold text-slate-500">
+                  PESERTA
                 </p>
 
-                <p className="mt-1 text-xs text-red-400">
-                  Sila semak data sekolah dalam Supabase.
+                <p className="mt-1 text-2xl font-black text-white">
+                  {participants.length}
+                </p>
+
+              </div>
+
+
+              <div className="rounded-2xl bg-emerald-500/10 p-3 text-center sm:p-4">
+
+                <p className="text-[10px] font-bold text-emerald-400">
+                  SUDAH ISI
+                </p>
+
+                <p className="mt-1 text-2xl font-black text-emerald-400">
+                  {filledCount}
+                </p>
+
+              </div>
+
+
+              <div className="rounded-2xl bg-yellow-500/10 p-3 text-center sm:p-4">
+
+                <p className="text-[10px] font-bold text-yellow-400">
+                  BELUM ISI
+                </p>
+
+                <p className="mt-1 text-2xl font-black text-yellow-400">
+                  {remainingCount}
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* =================================================
+            SENARAI PESERTA
+        ================================================= */}
+
+        <form
+          onSubmit={
+            handleSubmitAllReadings
+          }
+          className="mt-6"
+        >
+
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-4 sm:p-7">
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+              <div>
+
+                <p className="text-xs font-semibold text-emerald-400">
+                  LANGKAH 2
+                </p>
+
+                <h3 className="mt-1 text-xl font-black sm:text-2xl">
+                  📖 Masukkan Bacaan
+                </h3>
+
+              </div>
+
+              <div className="rounded-xl bg-emerald-500/10 px-4 py-3 text-xs text-emerald-300 sm:text-sm">
+                Kosongkan jika peserta tidak membaca hari ini.
+              </div>
+
+            </div>
+
+
+            {participants.length > 0 ? (
+
+              <div className="mt-5 space-y-3">
+
+                {participants.map(
+                  (
+                    participant,
+                    index
+                  ) => {
+
+                    const school =
+                      getSchoolForParticipant(
+                        participant
+                      );
+
+                    const inputValue =
+                      pageInputs[
+                        participant.id
+                      ] ??
+                      "";
+
+                    const hasInput =
+                      inputValue.trim() !== "";
+
+                    return (
+                      <div
+                        key={
+                          participant.id
+                        }
+                        className={`rounded-2xl border p-4 transition ${
+                          hasInput
+                            ? "border-emerald-500/30 bg-emerald-500/5"
+                            : "border-white/5 bg-slate-800/70"
+                        }`}
+                      >
+
+                        <div className="flex gap-3">
+
+                          {/* GAMBAR */}
+
+                          <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-slate-700 sm:h-14 sm:w-14">
+
+                            {participant.photo_url ? (
+
+                              <img
+                                src={
+                                  participant.photo_url
+                                }
+                                alt={
+                                  participant.name
+                                }
+                                className="h-full w-full object-cover"
+                              />
+
+                            ) : (
+
+                              <div className="flex h-full w-full items-center justify-center text-2xl">
+                                👤
+                              </div>
+
+                            )}
+
+                          </div>
+
+
+                          {/* MAKLUMAT */}
+
+                          <div className="min-w-0 flex-1">
+
+                            <div className="flex items-start justify-between gap-2">
+
+                              <div className="min-w-0">
+
+                                <p className="font-black leading-5">
+                                  {index + 1}.{" "}
+                                  {
+                                    participant.name
+                                  }
+                                </p>
+
+                                <p className="mt-1 truncate text-xs text-slate-500">
+                                  {school?.code ??
+                                    "—"}{" "}
+                                  ·{" "}
+                                  {school?.name ??
+                                    "Sekolah tidak ditemui"}
+                                </p>
+
+                              </div>
+
+
+                              {/* STATUS */}
+
+                              {hasInput && (
+                                <span className="flex-shrink-0 rounded-lg bg-emerald-500/15 px-2 py-1 text-[10px] font-black text-emerald-400">
+                                  ✓ SIAP
+                                </span>
+                              )}
+
+                            </div>
+
+
+                            {/* BAWAH */}
+
+                            <div className="mt-4 grid grid-cols-2 gap-3">
+
+                              {/* SEMASA */}
+
+                              <div className="rounded-xl bg-slate-900/80 p-3">
+
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                  Semasa
+                                </p>
+
+                                <p className="mt-1 text-xl font-black text-emerald-400">
+                                  {
+                                    participant.current_page
+                                  }
+                                  <span className="ml-1 text-xs font-medium text-slate-500">
+                                    /604
+                                  </span>
+                                </p>
+
+                              </div>
+
+
+                              {/* INPUT */}
+
+                              <div>
+
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                  Bacaan Baharu
+                                </p>
+
+                                <input
+                                  type="number"
+                                  min={
+                                    participant.current_page +
+                                    1
+                                  }
+                                  max="604"
+                                  inputMode="numeric"
+                                  value={
+                                    inputValue
+                                  }
+                                  onChange={(
+                                    event
+                                  ) =>
+                                    handlePageInputChange(
+                                      participant.id,
+                                      event.target.value
+                                    )
+                                  }
+                                  placeholder={`> ${participant.current_page}`}
+                                  className={`mt-1 w-full rounded-xl border px-3 py-3 text-center text-lg font-black text-white outline-none transition ${
+                                    hasInput
+                                      ? "border-emerald-500/40 bg-emerald-500/10"
+                                      : "border-white/10 bg-slate-900"
+                                  } focus:border-emerald-400`}
+                                />
+
+                              </div>
+
+                            </div>
+
+
+                            {/* GRANDMASTER */}
+
+                            {participant.grandmaster_at && (
+                              <div className="mt-3">
+
+                                <span className="rounded-lg bg-yellow-500/10 px-3 py-1 text-xs font-black text-yellow-400">
+                                  👑 GRANDMASTER
+                                </span>
+
+                              </div>
+                            )}
+
+                          </div>
+
+                        </div>
+
+                      </div>
+                    );
+                  }
+                )}
+
+              </div>
+
+            ) : (
+
+              <div className="mt-5 rounded-2xl border border-white/5 bg-slate-800 p-8 text-center">
+
+                <p className="text-4xl">
+                  👥
+                </p>
+
+                <p className="mt-3 font-bold text-slate-300">
+                  Tiada peserta dalam Kumpulan{" "}
+                  {selectedGroup}
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Tambahkan peserta dan pilih kumpulan mereka.
                 </p>
 
               </div>
@@ -1277,29 +1437,183 @@ export default function GuruPage() {
             )}
 
 
-            {/* TAMBAH PESERTA */}
+            {/* =================================================
+                BUTTON HANTAR
+            ================================================= */}
 
-            <form
-              onSubmit={
-                handleAddParticipant
-              }
-              className="mt-8"
-            >
+            {participants.length > 0 && (
 
-              <h3 className="text-lg font-bold">
-                Tambah Peserta
-              </h3>
+              <div className="mt-6">
+
+                <div className="mb-3 flex items-center justify-between text-xs">
+
+                  <span className="text-slate-500">
+                    Kemajuan pengisian
+                  </span>
+
+                  <span className="font-bold text-emerald-400">
+                    {filledCount} /{" "}
+                    {participants.length}
+                  </span>
+
+                </div>
 
 
-              <p className="mt-1 text-sm text-slate-400">
+                {/* PROGRESS */}
 
-                Tambah peserta baharu bagi{" "}
+                <div className="mb-5 h-2 overflow-hidden rounded-full bg-slate-800">
 
-                {selectedSchool?.name ??
-                  "sekolah ini"}.
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{
+                      width:
+                        participants.length > 0
+                          ? `${Math.round(
+                              (filledCount /
+                                participants.length) *
+                                100
+                            )}%`
+                          : "0%",
+                    }}
+                  />
 
-              </p>
+                </div>
 
+
+                <button
+                  type="submit"
+                  disabled={
+                    savingAllReadings ||
+                    filledCount === 0
+                  }
+                  className="w-full rounded-2xl bg-emerald-500 py-5 text-base font-black text-slate-950 shadow-lg shadow-emerald-500/10 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:text-lg"
+                >
+
+                  {savingAllReadings
+                    ? "⏳ Sedang menyimpan semua bacaan…"
+                    : `📖 HANTAR SEMUA BACAAN (${filledCount})`}
+
+                </button>
+
+              </div>
+
+            )}
+
+          </div>
+
+        </form>
+
+
+        {/* =================================================
+            TAMBAH PESERTA
+        ================================================= */}
+
+        <div className="mt-6 rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
+
+          <p className="text-xs font-semibold text-emerald-400">
+            TAMBAH PESERTA
+          </p>
+
+          <h3 className="mt-1 text-xl font-black sm:text-2xl">
+            ➕ Daftar Peserta Baharu
+          </h3>
+
+          <p className="mt-1 text-sm text-slate-400">
+            Peserta boleh daripada mana-mana sekolah dan dimasukkan ke mana-mana kumpulan.
+          </p>
+
+
+          <form
+            onSubmit={
+              handleAddParticipant
+            }
+            className="mt-6 grid gap-4 lg:grid-cols-2"
+          >
+
+            {/* SEKOLAH */}
+
+            <div>
+
+              <label className="text-sm font-semibold text-slate-300">
+                Sekolah
+              </label>
+
+              <select
+                value={
+                  selectedSchoolId
+                }
+                onChange={(event) =>
+                  setSelectedSchoolId(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+              >
+
+                {schools.map(
+                  (school) => (
+                    <option
+                      key={
+                        school.id
+                      }
+                      value={
+                        school.id
+                      }
+                    >
+                      {school.code} ·{" "}
+                      {school.name}
+                    </option>
+                  )
+                )}
+
+              </select>
+
+            </div>
+
+
+            {/* KUMPULAN */}
+
+            <div>
+
+              <label className="text-sm font-semibold text-slate-300">
+                Kumpulan
+              </label>
+
+              <select
+                value={
+                  newParticipantGroup
+                }
+                onChange={(event) =>
+                  setNewParticipantGroup(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+              >
+
+                {groups.map(
+                  (group) => (
+                    <option
+                      key={group}
+                      value={group}
+                    >
+                      Kumpulan {group}
+                    </option>
+                  )
+                )}
+
+              </select>
+
+            </div>
+
+
+            {/* NAMA */}
+
+            <div>
+
+              <label className="text-sm font-semibold text-slate-300">
+                Nama Peserta
+              </label>
 
               <input
                 value={
@@ -1311,57 +1625,73 @@ export default function GuruPage() {
                   )
                 }
                 placeholder="Nama penuh peserta"
-                className="mt-4 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
               />
 
+            </div>
+
+
+            {/* MUKA SURAT AWAL */}
+
+            <div>
+
+              <label className="text-sm font-semibold text-slate-300">
+                Muka Surat Permulaan
+              </label>
 
               <input
                 type="number"
                 min="0"
                 max="604"
-                value={startingPage}
+                value={
+                  startingPage
+                }
                 onChange={(event) =>
                   setStartingPage(
                     event.target.value
                   )
                 }
-                placeholder="Muka surat permulaan"
-                className="mt-3 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+                placeholder="0"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
               />
 
-
-              <label className="mt-3 block">
-
-                <span className="text-sm text-slate-300">
-                  Gambar peserta (pilihan)
-                </span>
-
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) =>
-                    setNewParticipantPhoto(
-                      event.target.files?.[0] ??
-                        null
-                    )
-                  }
-                  className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-emerald-400"
-                />
-
-
-                <p className="mt-2 text-xs text-slate-500">
-                  Gambar akan dimampatkan automatik sebelum disimpan.
-                </p>
-
-              </label>
-
-
-              <p className="mt-3 text-xs text-slate-500">
-                Muka surat permulaan ialah kemajuan awal peserta dan tidak
-                dikira sebagai bacaan hari ini.
+              <p className="mt-2 text-xs text-slate-500">
+                Kemajuan awal tidak dikira sebagai bacaan hari ini.
               </p>
 
+            </div>
+
+
+            {/* GAMBAR */}
+
+            <div className="lg:col-span-2">
+
+              <label className="text-sm font-semibold text-slate-300">
+                Gambar Peserta
+              </label>
+
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) =>
+                  setNewParticipantPhoto(
+                    event.target.files?.[0] ??
+                      null
+                  )
+                }
+                className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-emerald-400"
+              />
+
+              <p className="mt-2 text-xs text-slate-500">
+                Gambar akan dimampatkan secara automatik.
+              </p>
+
+            </div>
+
+
+            {/* BUTTON */}
+
+            <div className="lg:col-span-2">
 
               <button
                 type="submit"
@@ -1369,94 +1699,86 @@ export default function GuruPage() {
                   savingParticipant ||
                   !selectedSchoolId
                 }
-                className="mt-4 w-full rounded-xl bg-emerald-500 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-400"
+                className="w-full rounded-xl bg-emerald-500 py-4 font-bold text-slate-950 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-400"
               >
 
                 {savingParticipant
-                  ? "Menyimpan…"
+                  ? "⏳ Menyimpan peserta…"
                   : "➕ Tambah Peserta"}
 
               </button>
 
-            </form>
+            </div>
 
-          </div>
+          </form>
+
+        </div>
 
 
-          {/* PESERTA */}
+        {/* =================================================
+            REKOD PESERTA
+        ================================================= */}
 
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
 
-            <h3 className="text-xl font-bold">
-              2. Pilih Peserta
+          {/* PILIH PESERTA */}
+
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
+
+            <p className="text-xs font-semibold text-emerald-400">
+              SEMAKAN
+            </p>
+
+            <h3 className="mt-1 text-xl font-bold">
+              👤 Lihat Rekod Peserta
             </h3>
 
+            <select
+              value={
+                selectedParticipantId
+              }
+              onChange={(event) =>
+                handleSelectParticipant(
+                  event.target.value
+                )
+              }
+              className="mt-5 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+            >
 
-            {participants.length > 0 ? (
+              <option value="">
+                — Pilih peserta —
+              </option>
 
-              <select
-                value={
-                  selectedParticipantId
-                }
-                onChange={(event) => {
+              {participants.map(
+                (participant) => (
+                  <option
+                    key={
+                      participant.id
+                    }
+                    value={
+                      participant.id
+                    }
+                  >
+                    {
+                      participant.name
+                    }{" "}
+                    ·{" "}
+                    {
+                      participant.current_page
+                    }
+                    /604
+                  </option>
+                )
+              )}
 
-                  setSelectedParticipantId(
-                    event.target.value
-                  );
+            </select>
 
-                  setError("");
-
-                  setSuccess("");
-
-                }}
-                className="mt-5 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
-              >
-
-                <option value="">
-                  — Pilih peserta —
-                </option>
-
-
-                {participants.map(
-                  (participant) => (
-
-                    <option
-                      key={
-                        participant.id
-                      }
-                      value={
-                        participant.id
-                      }
-                    >
-
-                      {participant.name} ·{" "}
-                      {participant.current_page}/604
-
-                    </option>
-
-                  )
-                )}
-
-              </select>
-
-            ) : (
-
-              <p className="mt-5 rounded-xl bg-slate-800 p-4 text-slate-400">
-                Belum ada peserta untuk sekolah ini.
-              </p>
-
-            )}
-
-
-            {/* SELECTED PARTICIPANT */}
 
             {selectedParticipant && (
 
-              <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-
+              <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
 
                 <div className="flex items-center gap-4">
-
 
                   <div className="h-20 w-20 overflow-hidden rounded-2xl border border-emerald-400/20 bg-slate-800">
 
@@ -1482,22 +1804,23 @@ export default function GuruPage() {
 
                   </div>
 
-
                   <div>
 
                     <p className="text-sm text-slate-400">
                       Peserta dipilih
                     </p>
 
-
                     <p className="mt-1 text-xl font-black">
-                      {selectedParticipant.name}
+                      {
+                        selectedParticipant.name
+                      }
                     </p>
-
 
                     <p className="mt-2 text-emerald-400">
                       Kemajuan semasa:{" "}
-                      {selectedParticipant.current_page}{" "}
+                      {
+                        selectedParticipant.current_page
+                      }{" "}
                       / 604
                     </p>
 
@@ -1515,14 +1838,13 @@ export default function GuruPage() {
                 )}
 
 
-                {/* FOTO */}
+                {/* TUKAR GAMBAR */}
 
                 <label className="mt-5 block">
 
                   <span className="text-sm text-slate-300">
                     Tukar gambar peserta
                   </span>
-
 
                   <input
                     type="file"
@@ -1535,7 +1857,6 @@ export default function GuruPage() {
                     }
                     className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-emerald-400 disabled:opacity-50"
                   />
-
 
                   <p className="mt-2 text-xs text-slate-500">
 
@@ -1553,134 +1874,41 @@ export default function GuruPage() {
 
           </div>
 
-        </div>
-
-
-        {/* ===================================== */}
-        {/* REKOD + HARI INI */}
-        {/* ===================================== */}
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-
-
-          {/* REKOD */}
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
-
-            <h3 className="text-xl font-bold">
-              3. Rekod Bacaan
-            </h3>
-
-
-            <form
-              onSubmit={
-                handleRecordReading
-              }
-              className="mt-5"
-            >
-
-
-              <label className="block">
-
-                <span className="text-sm text-slate-300">
-                  Muka surat semasa
-                </span>
-
-
-                <input
-                  type="number"
-                  min="1"
-                  max="604"
-                  value={newPage}
-                  onChange={(event) =>
-                    setNewPage(
-                      event.target.value
-                    )
-                  }
-                  placeholder={
-                    selectedParticipant
-                      ? `Lebih daripada ${selectedParticipant.current_page}`
-                      : "Pilih peserta dahulu"
-                  }
-                  disabled={
-                    !selectedParticipant
-                  }
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-
-              </label>
-
-
-              <label className="mt-4 block">
-
-                <span className="text-sm text-slate-300">
-                  Catatan (pilihan)
-                </span>
-
-
-                <textarea
-                  value={note}
-                  onChange={(event) =>
-                    setNote(
-                      event.target.value
-                    )
-                  }
-                  placeholder="Contoh: Bacaan selepas waktu Zuhur"
-                  disabled={
-                    !selectedParticipant
-                  }
-                  className="mt-2 min-h-24 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-
-              </label>
-
-
-              <button
-                type="submit"
-                disabled={
-                  !selectedParticipant ||
-                  savingReading
-                }
-                className="mt-5 w-full rounded-xl bg-emerald-500 py-4 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-              >
-
-                {savingReading
-                  ? "Merekod bacaan…"
-                  : "📖 Simpan Bacaan"}
-
-              </button>
-
-            </form>
-
-          </div>
-
 
           {/* BACAAN HARI INI */}
 
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
 
             <h3 className="text-xl font-bold">
-              Bacaan Hari Ini
+              📊 Bacaan Hari Ini
             </h3>
 
-
-            {selectedParticipant ? (
+            {recordsParticipant ? (
 
               <>
 
-                <p className="mt-4 text-4xl font-black text-emerald-400">
-                  {todayPages}
+                <p className="mt-4 text-lg font-bold">
+                  {
+                    recordsParticipant.name
+                  }
                 </p>
 
+                <p className="mt-1 text-sm text-slate-500">
+                  Jumlah bacaan hari ini
+                </p>
+
+                <p className="mt-2 text-4xl font-black text-emerald-400">
+                  {todayPages}
+                </p>
 
                 <p className="text-sm text-slate-400">
                   muka surat hari ini
                 </p>
 
-
                 <div className="mt-6 space-y-3">
 
-                  {records.length > 0 ? (
+                  {records.length >
+                  0 ? (
 
                     records.map(
                       (record) => (
@@ -1693,18 +1921,20 @@ export default function GuruPage() {
                         >
 
                           <span className="text-sm text-slate-300">
-
-                            {record.page_from}{" "}
-                            →{" "}
-                            {record.page_to}
-
+                            {
+                              record.page_from
+                            }
+                            {" → "}
+                            {
+                              record.page_to
+                            }
                           </span>
 
-
                           <span className="font-bold text-emerald-400">
-
-                            +{record.pages_read}
-
+                            +
+                            {
+                              record.pages_read
+                            }
                           </span>
 
                         </div>
@@ -1735,7 +1965,6 @@ export default function GuruPage() {
           </div>
 
         </div>
-
 
       </section>
 
