@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { requireAuth } from "@/lib/auth";
 import DeleteStudentButton from "./DeleteStudentButton";
 
 export const dynamic = "force-dynamic";
@@ -54,8 +53,6 @@ export default async function StudentPage({
   params,
   searchParams,
 }: Props) {
-  await requireAuth();
-
   const { id } = await params;
   const { saved } = await searchParams;
 
@@ -67,7 +64,7 @@ export default async function StudentPage({
 
   if (error || !student) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white p-10">
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
         <h1 className="text-3xl font-bold text-red-400">
           Murid tidak ditemui
         </h1>
@@ -125,7 +122,7 @@ export default async function StudentPage({
 
       <header className="border-b border-white/10 bg-slate-900">
 
-        <div className="max-w-3xl mx-auto px-6 py-5">
+        <div className="mx-auto max-w-3xl px-6 py-5">
 
           <Link
             href="/guru"
@@ -140,20 +137,20 @@ export default async function StudentPage({
 
       {/* PROFILE */}
 
-      <section className="max-w-3xl mx-auto px-6 py-10">
+      <section className="mx-auto max-w-3xl px-6 py-10">
 
         <div className="text-center">
 
           {/* FOTO */}
 
-          <div className="mx-auto w-32 h-32 rounded-full overflow-hidden bg-slate-800 flex items-center justify-center border-4 border-emerald-400">
+          <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-emerald-400 bg-slate-800">
 
             {student.photo_url ? (
 
               <img
                 src={student.photo_url}
                 alt={student.name}
-                className="w-full h-full object-cover"
+                className="h-full w-full object-cover"
               />
 
             ) : (
@@ -166,13 +163,13 @@ export default async function StudentPage({
 
           </div>
 
-          <h1 className="text-3xl font-bold mt-6">
+          <h1 className="mt-6 text-3xl font-bold">
             {student.name}
           </h1>
 
           <Link
             href={`/guru/murid/${student.id}/edit`}
-            className="inline-flex mt-4 rounded-xl bg-slate-800 border border-white/10 px-5 py-3 text-sm font-bold text-white hover:bg-slate-700 hover:border-emerald-400/50 transition"
+            className="mt-4 inline-flex rounded-xl border border-white/10 bg-slate-800 px-5 py-3 text-sm font-bold text-white transition hover:border-emerald-400/50 hover:bg-slate-700"
           >
             ✏️ Edit Maklumat Murid
           </Link>
@@ -194,11 +191,11 @@ export default async function StudentPage({
               ✅
             </div>
 
-            <div className="text-lg font-bold text-emerald-400 mt-2">
+            <div className="mt-2 text-lg font-bold text-emerald-400">
               Bacaan berjaya disimpan!
             </div>
 
-            <p className="text-sm text-slate-300 mt-1">
+            <p className="mt-1 text-sm text-slate-300">
 
               {isGrandmaster
                 ? `Pusingan kedua kini berada di muka surat ${secondRoundPage}.`
@@ -224,7 +221,7 @@ export default async function StudentPage({
 
           </p>
 
-          <div className="text-6xl font-bold mt-3">
+          <div className="mt-3 text-6xl font-bold">
 
             {displayPage}
 
@@ -263,11 +260,11 @@ export default async function StudentPage({
               👑
             </div>
 
-            <h2 className="text-xl font-black text-yellow-400 mt-3">
+            <h2 className="mt-3 text-xl font-black text-yellow-400">
               GRANDMASTER
             </h2>
 
-            <p className="text-sm text-slate-400 mt-2">
+            <p className="mt-2 text-sm text-slate-400">
               Murid ini telah menamatkan bacaan Al-Quran.
               Pengisian seterusnya akan dikira sebagai
               bacaan pusingan kedua.
@@ -357,19 +354,17 @@ export default async function StudentPage({
               type="number"
               min="1"
               max="604"
-
               defaultValue={
                 isGrandmaster
                   ? secondRoundPage
                   : currentPage
               }
-
-              className="mt-5 w-full rounded-xl bg-slate-800 border border-white/10 px-5 py-4 text-white text-2xl text-center outline-none focus:border-emerald-400"
+              className="mt-5 w-full rounded-xl border border-white/10 bg-slate-800 px-5 py-4 text-center text-2xl text-white outline-none focus:border-emerald-400"
             />
 
             <button
               type="submit"
-              className="mt-5 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 text-lg transition"
+              className="mt-5 w-full rounded-xl bg-emerald-500 py-4 text-lg font-bold text-slate-950 transition hover:bg-emerald-400"
             >
 
               {isGrandmaster

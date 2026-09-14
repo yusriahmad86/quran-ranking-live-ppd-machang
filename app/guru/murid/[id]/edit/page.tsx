@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { requireAuth } from "@/lib/auth";
 import StudentPhotoUpload from "./StudentPhotoUpload";
 
 type Props = {
@@ -13,11 +12,12 @@ type Props = {
 export default async function EditStudentPage({
   params,
 }: Props) {
-  await requireAuth();
-
   const { id } = await params;
 
-  // Dapatkan maklumat murid
+  // ==========================================
+  // DAPATKAN MAKLUMAT MURID
+  // ==========================================
+
   const { data: student, error: studentError } =
     await supabase
       .from("students")
@@ -25,17 +25,23 @@ export default async function EditStudentPage({
       .eq("id", id)
       .single();
 
-  // Dapatkan senarai kelas
+  // ==========================================
+  // DAPATKAN SENARAI KELAS
+  // ==========================================
+
   const { data: classes, error: classesError } =
     await supabase
       .from("classes")
       .select("id, name")
       .order("name");
 
+  // ==========================================
+  // ERROR MURID
+  // ==========================================
+
   if (studentError || !student) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white p-10">
-
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
         <h1 className="text-3xl font-bold text-red-400">
           Murid tidak ditemui
         </h1>
@@ -43,15 +49,17 @@ export default async function EditStudentPage({
         <p className="mt-4 text-slate-400">
           {studentError?.message}
         </p>
-
       </main>
     );
   }
 
+  // ==========================================
+  // ERROR KELAS
+  // ==========================================
+
   if (classesError) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white p-10">
-
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
         <h1 className="text-3xl font-bold text-red-400">
           Ralat mendapatkan kelas
         </h1>
@@ -59,15 +67,17 @@ export default async function EditStudentPage({
         <p className="mt-4 text-slate-400">
           {classesError.message}
         </p>
-
       </main>
     );
   }
 
+  // ==========================================
+  // UPDATE MURID
+  // TANPA LOGIN
+  // ==========================================
+
   async function updateStudent(formData: FormData) {
     "use server";
-
-    await requireAuth();
 
     const name = String(
       formData.get("name") ?? ""
@@ -81,17 +91,29 @@ export default async function EditStudentPage({
       formData.get("current_page")
     );
 
+    // ========================================
+    // VALIDASI NAMA
+    // ========================================
+
     if (!name) {
       throw new Error(
         "Nama murid tidak boleh kosong."
       );
     }
 
+    // ========================================
+    // VALIDASI KELAS
+    // ========================================
+
     if (!classId) {
       throw new Error(
         "Sila pilih kelas."
       );
     }
+
+    // ========================================
+    // VALIDASI MUKA SURAT
+    // ========================================
 
     if (
       !Number.isInteger(pageValue) ||
@@ -102,6 +124,10 @@ export default async function EditStudentPage({
         "Muka surat mestilah antara 0 hingga 604."
       );
     }
+
+    // ========================================
+    // UPDATE DATABASE
+    // ========================================
 
     const { error } = await supabase
       .from("students")
@@ -117,16 +143,27 @@ export default async function EditStudentPage({
       throw new Error(error.message);
     }
 
+    // ========================================
+    // KEMBALI KE PROFIL MURID
+    // ========================================
+
     redirect(`/guru/murid/${id}`);
   }
+
+  // ==========================================
+  // PAGE
+  // ==========================================
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
+      {/* ====================================== */}
       {/* HEADER */}
+      {/* ====================================== */}
+
       <header className="border-b border-white/10 bg-slate-900">
 
-        <div className="max-w-3xl mx-auto px-6 py-5">
+        <div className="mx-auto max-w-3xl px-6 py-5">
 
           <Link
             href={`/guru/murid/${id}`}
@@ -135,11 +172,11 @@ export default async function EditStudentPage({
             ← Kembali ke Profil Murid
           </Link>
 
-          <h1 className="text-3xl font-bold mt-4">
+          <h1 className="mt-4 text-3xl font-bold">
             ✏️ Edit Maklumat Murid
           </h1>
 
-          <p className="text-slate-400 mt-1">
+          <p className="mt-1 text-slate-400">
             Kemas kini maklumat murid.
           </p>
 
@@ -147,16 +184,27 @@ export default async function EditStudentPage({
 
       </header>
 
-      {/* CONTENT */}
-      <section className="max-w-3xl mx-auto px-6 py-10 space-y-6">
 
-        {/* FOTO */}
+      {/* ====================================== */}
+      {/* CONTENT */}
+      {/* ====================================== */}
+
+      <section className="mx-auto max-w-3xl space-y-6 px-6 py-10">
+
+        {/* ==================================== */}
+        {/* FOTO MURID */}
+        {/* ==================================== */}
+
         <StudentPhotoUpload
           studentId={student.id}
           currentPhotoUrl={student.photo_url}
         />
 
+
+        {/* ==================================== */}
         {/* MAKLUMAT MURID */}
+        {/* ==================================== */}
+
         <div className="rounded-3xl border border-white/10 bg-slate-900 p-6 md:p-8">
 
           <form
@@ -164,12 +212,15 @@ export default async function EditStudentPage({
             className="space-y-6"
           >
 
+            {/* ================================= */}
             {/* NAMA */}
+            {/* ================================= */}
+
             <div>
 
               <label
                 htmlFor="name"
-                className="block text-sm font-semibold text-slate-300 mb-2"
+                className="mb-2 block text-sm font-semibold text-slate-300"
               >
                 Nama Murid
               </label>
@@ -180,17 +231,21 @@ export default async function EditStudentPage({
                 type="text"
                 required
                 defaultValue={student.name}
-                className="w-full rounded-xl bg-slate-800 border border-white/10 px-4 py-3 text-white outline-none focus:border-emerald-400"
+                className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
               />
 
             </div>
 
+
+            {/* ================================= */}
             {/* KELAS */}
+            {/* ================================= */}
+
             <div>
 
               <label
                 htmlFor="class_id"
-                className="block text-sm font-semibold text-slate-300 mb-2"
+                className="mb-2 block text-sm font-semibold text-slate-300"
               >
                 Kelas
               </label>
@@ -200,7 +255,7 @@ export default async function EditStudentPage({
                 name="class_id"
                 required
                 defaultValue={student.class_id}
-                className="w-full rounded-xl bg-slate-800 border border-white/10 px-4 py-3 text-white outline-none focus:border-emerald-400"
+                className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
               >
 
                 <option value="" disabled>
@@ -220,12 +275,16 @@ export default async function EditStudentPage({
 
             </div>
 
+
+            {/* ================================= */}
             {/* MUKA SURAT */}
+            {/* ================================= */}
+
             <div>
 
               <label
                 htmlFor="current_page"
-                className="block text-sm font-semibold text-slate-300 mb-2"
+                className="mb-2 block text-sm font-semibold text-slate-300"
               >
                 Muka Surat Semasa
               </label>
@@ -240,16 +299,20 @@ export default async function EditStudentPage({
                 defaultValue={
                   student.current_page ?? 0
                 }
-                className="w-full rounded-xl bg-slate-800 border border-white/10 px-4 py-3 text-white text-xl text-center outline-none focus:border-emerald-400"
+                className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-center text-xl text-white outline-none focus:border-emerald-400"
               />
 
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="mt-2 text-xs text-slate-500">
                 Masukkan nilai antara 0 hingga 604.
               </p>
 
             </div>
 
+
+            {/* ================================= */}
             {/* PERINGATAN */}
+            {/* ================================= */}
+
             <div className="rounded-2xl border border-yellow-500/10 bg-yellow-500/5 p-5">
 
               <div className="flex gap-4">
@@ -264,7 +327,7 @@ export default async function EditStudentPage({
                     Perhatian
                   </h3>
 
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="mt-1 text-sm text-slate-400">
                     Perubahan muka surat akan terus
                     mempengaruhi ranking murid.
                   </p>
@@ -275,10 +338,14 @@ export default async function EditStudentPage({
 
             </div>
 
+
+            {/* ================================= */}
             {/* SIMPAN */}
+            {/* ================================= */}
+
             <button
               type="submit"
-              className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 text-lg transition"
+              className="w-full rounded-xl bg-emerald-500 py-4 text-lg font-bold text-slate-950 transition hover:bg-emerald-400"
             >
               💾 Simpan Perubahan
             </button>
