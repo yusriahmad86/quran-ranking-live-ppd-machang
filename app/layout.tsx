@@ -18,16 +18,7 @@ export const metadata: Metadata = {
   description:
     "Sistem Pemantauan Bacaan Al-Quran Murid PPD Machang",
 
-  applicationName:
-    "QURAN RANKING LIVE – PPD MACHANG",
-
-  generator: "Next.js",
-
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
-  },
+  applicationName: "QURAN RANKING LIVE – PPD MACHANG",
 
   openGraph: {
     title: "QURAN RANKING LIVE – PPD MACHANG",
@@ -35,8 +26,7 @@ export const metadata: Metadata = {
       "Sistem Pemantauan Bacaan Al-Quran Murid PPD Machang",
     type: "website",
     locale: "ms_MY",
-    siteName:
-      "QURAN RANKING LIVE – PPD MACHANG",
+    siteName: "QURAN RANKING LIVE – PPD MACHANG",
     images: [
       {
         url: "/og-image.png",
