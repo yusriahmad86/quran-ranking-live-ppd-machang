@@ -124,24 +124,12 @@ async function compressImage(file: File) {
 }
 
 export default function GuruPage() {
-  // =====================================================
-  // DATA
-  // =====================================================
-
   const [schools, setSchools] = useState<School[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
 
-  // =====================================================
-  // KUMPULAN
-  // =====================================================
-
   const [selectedGroup, setSelectedGroup] = useState("1");
   const [pageInputs, setPageInputs] = useState<PageInputs>({});
-
-  // =====================================================
-  // PESERTA BAHARU
-  // =====================================================
 
   const [selectedSchoolId, setSelectedSchoolId] = useState("");
   const [newParticipantName, setNewParticipantName] = useState("");
@@ -150,16 +138,10 @@ export default function GuruPage() {
     useState<File | null>(null);
   const [newParticipantGroup, setNewParticipantGroup] = useState("1");
 
-  // =====================================================
-  // PESERTA DIPILIH
-  // =====================================================
-
-  const [selectedParticipantId, setSelectedParticipantId] = useState("");
-  const [recordsParticipantId, setRecordsParticipantId] = useState("");
-
-  // =====================================================
-  // STATUS
-  // =====================================================
+  const [selectedParticipantId, setSelectedParticipantId] =
+    useState("");
+  const [recordsParticipantId, setRecordsParticipantId] =
+    useState("");
 
   const [loading, setLoading] = useState(true);
   const [savingParticipant, setSavingParticipant] = useState(false);
@@ -169,10 +151,6 @@ export default function GuruPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // =====================================================
-  // DATA PILIHAN
-  // =====================================================
-
   const selectedParticipant = participants.find(
     (participant) => participant.id === selectedParticipantId
   );
@@ -180,10 +158,6 @@ export default function GuruPage() {
   const recordsParticipant = participants.find(
     (participant) => participant.id === recordsParticipantId
   );
-
-  // =====================================================
-  // KIRAAN INPUT
-  // =====================================================
 
   const filledCount = participants.filter((participant) => {
     const value = pageInputs[participant.id]?.trim() ?? "";
@@ -201,33 +175,26 @@ export default function GuruPage() {
     [records]
   );
 
-  // =====================================================
-  // SENARAI KUMPULAN
-  // =====================================================
-
   const groups = Array.from({ length: 10 }, (_, index) => index + 1);
-
-  // =====================================================
-  // DAPATKAN SEKOLAH PESERTA
-  // =====================================================
 
   function getSchoolForParticipant(participant: Participant) {
     return schools.find((school) => school.id === participant.school_id);
   }
 
   // =====================================================
-  // LOAD SEKOLAH
+  // LOAD SEKOLAH - GUNA RPC
   // =====================================================
 
   async function loadSchools() {
-    const { data, error } = await supabase
-      .from("schools")
-      .select("id, code, name")
-      .eq("is_active", true)
-      .order("code");
+    const { data, error } = await supabase.rpc(
+      "get_active_schools"
+    );
 
     if (error) {
-      setError(`Gagal memuatkan sekolah: ${error.message}`);
+      setError(
+        `Gagal memuatkan senarai sekolah: ${error.message}`
+      );
+      setSchools([]);
       return;
     }
 
@@ -241,8 +208,7 @@ export default function GuruPage() {
   }
 
   // =====================================================
-  // LOAD PESERTA MENGIKUT KUMPULAN
-  // GUNA RPC BARU
+  // LOAD PESERTA MENGIKUT KUMPULAN - GUNA RPC
   // =====================================================
 
   async function loadParticipants(groupNumber: string) {
@@ -273,7 +239,6 @@ export default function GuruPage() {
 
     setParticipants(participantData);
     setPageInputs({});
-
     setSelectedParticipantId("");
     setRecordsParticipantId("");
     setRecords([]);
@@ -515,7 +480,7 @@ export default function GuruPage() {
   }
 
   // =====================================================
-  // TUKAR INPUT MUKA SURAT
+  // INPUT MUKA SURAT
   // =====================================================
 
   function handlePageInputChange(
@@ -557,10 +522,6 @@ export default function GuruPage() {
       return;
     }
 
-    // =================================================
-    // VALIDASI
-    // =================================================
-
     for (const entry of entries) {
       const pageTo = Number(entry.value);
 
@@ -587,10 +548,6 @@ export default function GuruPage() {
 
     const savedNames: string[] = [];
     const failedNames: string[] = [];
-
-    // =================================================
-    // SIMPAN SEMUA
-    // =================================================
 
     for (const entry of entries) {
       const pageTo = Number(entry.value);
@@ -643,7 +600,7 @@ export default function GuruPage() {
   }
 
   // =====================================================
-  // PILIH PESERTA UNTUK LIHAT REKOD
+  // PILIH PESERTA
   // =====================================================
 
   function handleSelectParticipant(
@@ -657,7 +614,7 @@ export default function GuruPage() {
   }
 
   // =====================================================
-  // TUKAR GAMBAR PESERTA
+  // TUKAR GAMBAR
   // =====================================================
 
   async function handleSelectedPhotoChange(
@@ -698,7 +655,6 @@ export default function GuruPage() {
     }
 
     event.target.value = "";
-
     setUploadingPhoto(false);
   }
 
@@ -721,7 +677,6 @@ export default function GuruPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
-      {/* HEADER */}
       <header className="border-b border-white/10 bg-slate-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
 
@@ -757,7 +712,6 @@ export default function GuruPage() {
         </div>
       </header>
 
-      {/* CONTENT */}
       <section className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
 
         <p className="text-sm font-semibold text-emerald-400">
@@ -772,21 +726,19 @@ export default function GuruPage() {
           Pilih kumpulan dan masukkan bacaan semua peserta secara pukal.
         </p>
 
-        {/* ERROR */}
         {error && (
           <div className="mt-6 whitespace-pre-line rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-300">
             ❌ {error}
           </div>
         )}
 
-        {/* SUCCESS */}
         {success && (
           <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-300">
             {success}
           </div>
         )}
 
-        {/* PILIH KUMPULAN */}
+        {/* KUMPULAN */}
         <div className="mt-7 rounded-3xl border border-emerald-500/20 bg-slate-900 p-5 sm:p-7">
 
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
@@ -826,7 +778,6 @@ export default function GuruPage() {
 
             </div>
 
-            {/* STAT PESERTA */}
             <div className="grid grid-cols-3 gap-2 md:w-[360px]">
 
               <div className="rounded-2xl bg-slate-800 p-3 text-center sm:p-4">
@@ -921,7 +872,6 @@ export default function GuruPage() {
 
                         <div className="flex gap-3">
 
-                          {/* GAMBAR */}
                           <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-slate-700 sm:h-14 sm:w-14">
 
                             {participant.photo_url ? (
@@ -938,7 +888,6 @@ export default function GuruPage() {
 
                           </div>
 
-                          {/* MAKLUMAT */}
                           <div className="min-w-0 flex-1">
 
                             <div className="flex items-start justify-between gap-2">
@@ -966,10 +915,8 @@ export default function GuruPage() {
 
                             </div>
 
-                            {/* BAWAH */}
                             <div className="mt-4 grid grid-cols-2 gap-3">
 
-                              {/* SEMASA */}
                               <div className="rounded-xl bg-slate-900/80 p-3">
 
                                 <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
@@ -986,7 +933,6 @@ export default function GuruPage() {
 
                               </div>
 
-                              {/* INPUT */}
                               <div>
 
                                 <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
@@ -1020,7 +966,6 @@ export default function GuruPage() {
 
                             </div>
 
-                            {/* GRANDMASTER */}
                             {participant.grandmaster_at && (
                               <div className="mt-3">
                                 <span className="rounded-lg bg-yellow-500/10 px-3 py-1 text-xs font-black text-yellow-400">
@@ -1061,7 +1006,6 @@ export default function GuruPage() {
 
             )}
 
-            {/* BUTTON HANTAR */}
             {participants.length > 0 && (
 
               <div className="mt-6">
@@ -1116,7 +1060,7 @@ export default function GuruPage() {
           </div>
         </form>
 
-        {/* TAMBAH PESERTA */}
+        {/* DAFTAR PESERTA */}
         <div className="mt-6 rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
 
           <p className="text-xs font-semibold text-emerald-400">
@@ -1222,7 +1166,7 @@ export default function GuruPage() {
 
             </div>
 
-            {/* MUKA SURAT AWAL */}
+            {/* MUKA SURAT */}
             <div>
 
               <label className="text-sm font-semibold text-slate-300">
@@ -1274,7 +1218,6 @@ export default function GuruPage() {
 
             </div>
 
-            {/* BUTTON */}
             <div className="lg:col-span-2">
 
               <button
@@ -1299,7 +1242,6 @@ export default function GuruPage() {
         {/* REKOD PESERTA */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
 
-          {/* PILIH PESERTA */}
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
 
             <p className="text-xs font-semibold text-emerald-400">
@@ -1388,7 +1330,6 @@ export default function GuruPage() {
                   </p>
                 )}
 
-                {/* TUKAR GAMBAR */}
                 <label className="mt-5 block">
 
                   <span className="text-sm text-slate-300">
