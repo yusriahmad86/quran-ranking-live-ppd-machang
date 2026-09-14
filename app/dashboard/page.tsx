@@ -39,10 +39,6 @@ type LiveRankings = {
   grandmasters: Grandmaster[];
 };
 
-/* ========================================= */
-/* FORMAT TARIKH */
-/* ========================================= */
-
 function formatDate(date: string) {
   return new Date(`${date}T00:00:00+08:00`).toLocaleDateString(
     "ms-MY",
@@ -54,22 +50,10 @@ function formatDate(date: string) {
   );
 }
 
-/* ========================================= */
-/* MAIN DASHBOARD */
-/* ========================================= */
-
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  /* ========================================= */
-  /* DAPATKAN DATA RANKING */
-  /* ========================================= */
-
   const { data, error } = await supabase.rpc("get_live_rankings");
-
-  /* ========================================= */
-  /* ERROR */
-  /* ========================================= */
 
   if (error) {
     return (
@@ -104,15 +88,18 @@ export default async function DashboardPage() {
             >
               📄 Laporan Bacaan
             </Link>
+
+            <Link
+              href="/guru/analisa-keseluruhan"
+              className="inline-flex rounded-xl bg-cyan-500 px-5 py-3 font-bold text-white"
+            >
+              📊 Analisa Keseluruhan
+            </Link>
           </div>
         </div>
       </main>
     );
   }
-
-  /* ========================================= */
-  /* DATA */
-  /* ========================================= */
 
   const rankings = data as LiveRankings;
 
@@ -120,10 +107,6 @@ export default async function DashboardPage() {
   const schools = rankings?.schools ?? [];
   const overall = rankings?.overall ?? [];
   const grandmasters = rankings?.grandmasters ?? [];
-
-  /* ========================================= */
-  /* KIRAAN STATISTIK */
-  /* ========================================= */
 
   const totalSchools = schools.length;
 
@@ -150,10 +133,6 @@ export default async function DashboardPage() {
     overall.length > 0
       ? overall[0]
       : null;
-
-  /* ========================================= */
-  /* PAGE */
-  /* ========================================= */
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -231,8 +210,6 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
-          {/* SEKOLAH */}
-
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
             <div className="mb-4 text-4xl">
               🏫
@@ -250,8 +227,6 @@ export default async function DashboardPage() {
               sekolah aktif
             </p>
           </div>
-
-          {/* PESERTA */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
             <div className="mb-4 text-4xl">
@@ -271,8 +246,6 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          {/* BACAAN HARI INI */}
-
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
             <div className="mb-4 text-4xl">
               🔥
@@ -290,8 +263,6 @@ export default async function DashboardPage() {
               muka surat
             </p>
           </div>
-
-          {/* GRANDMASTER */}
 
           <div className="rounded-3xl border border-yellow-500/20 bg-slate-900 p-6">
             <div className="mb-4 text-4xl">
@@ -318,8 +289,6 @@ export default async function DashboardPage() {
         {/* =================================== */}
 
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
-
-          {/* PESERTA TERATAS */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
 
@@ -364,8 +333,6 @@ export default async function DashboardPage() {
             )}
 
           </div>
-
-          {/* JUMLAH KEMAJUAN */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
 
@@ -421,7 +388,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* =================================== */}
-        {/* RANKING SEKOLAH RINGKAS */}
+        {/* RANKING SEKOLAH */}
         {/* =================================== */}
 
         <div className="mt-10 rounded-3xl border border-white/10 bg-slate-900 p-7">
@@ -503,7 +470,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* =================================== */}
-        {/* GRANDMASTER TERKINI */}
+        {/* GRANDMASTER */}
         {/* =================================== */}
 
         {grandmasters.length > 0 && (
@@ -588,7 +555,7 @@ export default async function DashboardPage() {
             Menu Utama
           </h3>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-5">
 
             {/* PENGISIAN */}
 
@@ -596,7 +563,6 @@ export default async function DashboardPage() {
               href="/guru"
               className="group rounded-3xl border border-white/10 bg-slate-900 p-7 transition hover:border-emerald-400/50 hover:bg-slate-800"
             >
-
               <div className="mb-5 text-5xl">
                 📖
               </div>
@@ -613,7 +579,6 @@ export default async function DashboardPage() {
               <div className="mt-6 font-semibold text-emerald-400">
                 Buka Pengisian →
               </div>
-
             </Link>
 
             {/* DAFTAR MURID */}
@@ -622,7 +587,6 @@ export default async function DashboardPage() {
               href="/guru/daftar-murid"
               className="group rounded-3xl border border-white/10 bg-slate-900 p-7 transition hover:border-blue-400/50 hover:bg-slate-800"
             >
-
               <div className="mb-5 text-5xl">
                 ➕
               </div>
@@ -639,7 +603,6 @@ export default async function DashboardPage() {
               <div className="mt-6 font-semibold text-blue-400">
                 Buka Pendaftaran →
               </div>
-
             </Link>
 
             {/* RANKING */}
@@ -648,7 +611,6 @@ export default async function DashboardPage() {
               href="/ranking"
               className="group rounded-3xl border border-white/10 bg-slate-900 p-7 transition hover:border-yellow-400/50 hover:bg-slate-800"
             >
-
               <div className="mb-5 text-5xl">
                 🏆
               </div>
@@ -665,7 +627,6 @@ export default async function DashboardPage() {
               <div className="mt-6 font-semibold text-yellow-400">
                 Lihat Ranking →
               </div>
-
             </Link>
 
             {/* LAPORAN */}
@@ -674,7 +635,6 @@ export default async function DashboardPage() {
               href="/guru/laporan-kumpulan"
               className="group rounded-3xl border border-white/10 bg-slate-900 p-7 transition hover:border-purple-400/50 hover:bg-slate-800"
             >
-
               <div className="mb-5 text-5xl">
                 📄
               </div>
@@ -691,7 +651,30 @@ export default async function DashboardPage() {
               <div className="mt-6 font-semibold text-purple-400">
                 Buka Laporan →
               </div>
+            </Link>
 
+            {/* ANALISA KESELURUHAN */}
+
+            <Link
+              href="/guru/analisa-keseluruhan"
+              className="group rounded-3xl border border-white/10 bg-slate-900 p-7 transition hover:border-cyan-400/50 hover:bg-slate-800"
+            >
+              <div className="mb-5 text-5xl">
+                📊
+              </div>
+
+              <h3 className="text-2xl font-bold">
+                Analisa Keseluruhan
+              </h3>
+
+              <p className="mt-2 text-slate-400">
+                Lihat analisa semua murid, sekolah,
+                level dan prestasi bacaan.
+              </p>
+
+              <div className="mt-6 font-semibold text-cyan-400">
+                Buka Analisa →
+              </div>
             </Link>
 
           </div>
