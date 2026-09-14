@@ -24,6 +24,7 @@ type Participant = {
   grandmaster_at: string | null;
   school_id: string;
   group_number: number | null;
+  has_read_today: boolean;
 };
 
 type ReadingRecord = {
@@ -159,10 +160,13 @@ export default function GuruPage() {
     (participant) => participant.id === recordsParticipantId
   );
 
-  const filledCount = participants.filter((participant) => {
-    const value = pageInputs[participant.id]?.trim() ?? "";
-    return value !== "";
-  }).length;
+  // =====================================================
+  // STATUS SEBENAR BACAAN HARI INI
+  // =====================================================
+
+  const filledCount = participants.filter(
+    (participant) => participant.has_read_today
+  ).length;
 
   const remainingCount = participants.length - filledCount;
 
@@ -570,6 +574,11 @@ export default function GuruPage() {
       }
     }
 
+    // ===================================================
+    // REFRESH DATA DARIPADA DATABASE
+    // supaya has_read_today berubah kepada true
+    // ===================================================
+
     await loadParticipants(selectedGroup);
 
     setPageInputs({});
@@ -864,8 +873,10 @@ export default function GuruPage() {
                       <div
                         key={participant.id}
                         className={`rounded-2xl border p-4 transition ${
-                          hasInput
+                          participant.has_read_today
                             ? "border-emerald-500/30 bg-emerald-500/5"
+                            : hasInput
+                            ? "border-yellow-500/30 bg-yellow-500/5"
                             : "border-white/5 bg-slate-800/70"
                         }`}
                       >
@@ -907,11 +918,15 @@ export default function GuruPage() {
 
                               </div>
 
-                              {hasInput && (
+                              {participant.has_read_today ? (
                                 <span className="flex-shrink-0 rounded-lg bg-emerald-500/15 px-2 py-1 text-[10px] font-black text-emerald-400">
-                                  ✓ SIAP
+                                  ✓ SUDAH ISI
                                 </span>
-                              )}
+                              ) : hasInput ? (
+                                <span className="flex-shrink-0 rounded-lg bg-yellow-500/15 px-2 py-1 text-[10px] font-black text-yellow-400">
+                                  ⏳ AKAN ISI
+                                </span>
+                              ) : null}
 
                             </div>
 
@@ -957,7 +972,7 @@ export default function GuruPage() {
                                   placeholder={`> ${participant.current_page}`}
                                   className={`mt-1 w-full rounded-xl border px-3 py-3 text-center text-lg font-black text-white outline-none transition ${
                                     hasInput
-                                      ? "border-emerald-500/40 bg-emerald-500/10"
+                                      ? "border-yellow-500/40 bg-yellow-500/10"
                                       : "border-white/10 bg-slate-900"
                                   } focus:border-emerald-400`}
                                 />
@@ -965,6 +980,14 @@ export default function GuruPage() {
                               </div>
 
                             </div>
+
+                            {participant.has_read_today && (
+                              <div className="mt-3">
+                                <span className="rounded-lg bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+                                  📖 Bacaan hari ini telah direkodkan
+                                </span>
+                              </div>
+                            )}
 
                             {participant.grandmaster_at && (
                               <div className="mt-3">
@@ -1013,7 +1036,7 @@ export default function GuruPage() {
                 <div className="mb-3 flex items-center justify-between text-xs">
 
                   <span className="text-slate-500">
-                    Kemajuan pengisian
+                    Status bacaan hari ini
                   </span>
 
                   <span className="font-bold text-emerald-400">
@@ -1044,13 +1067,20 @@ export default function GuruPage() {
                   type="submit"
                   disabled={
                     savingAllReadings ||
-                    filledCount === 0
+                    participants.every(
+                      (participant) =>
+                        participant.has_read_today
+                    ) &&
+                    participants.every(
+                      (participant) =>
+                        !pageInputs[participant.id]?.trim()
+                    )
                   }
                   className="w-full rounded-2xl bg-emerald-500 py-5 text-base font-black text-slate-950 shadow-lg shadow-emerald-500/10 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:text-lg"
                 >
                   {savingAllReadings
                     ? "⏳ Sedang menyimpan semua bacaan…"
-                    : `📖 HANTAR SEMUA BACAAN (${filledCount})`}
+                    : `📖 HANTAR SEMUA BACAAN`}
                 </button>
 
               </div>
