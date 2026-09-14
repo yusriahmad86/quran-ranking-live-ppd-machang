@@ -55,6 +55,104 @@ function getLevelIcon(level: string) {
   }
 }
 
+async function compressImage(file: File) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Sila pilih fail gambar.");
+  }
+
+  if (file.size > 15 * 1024 * 1024) {
+    throw new Error(
+      "Gambar asal terlalu besar. Had gambar asal ialah 15 MB."
+    );
+  }
+
+  const image = await createImageBitmap(file);
+
+  const maxDimension = 1600;
+
+  const scale = Math.min(
+    1,
+    maxDimension / Math.max(image.width, image.height)
+  );
+
+  const width = Math.max(
+    1,
+    Math.round(image.width * scale)
+  );
+
+  const height = Math.max(
+    1,
+    Math.round(image.height * scale)
+  );
+
+  const canvas = document.createElement("canvas");
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    image.close();
+    throw new Error("Gagal memproses gambar.");
+  }
+
+  context.drawImage(
+    image,
+    0,
+    0,
+    width,
+    height
+  );
+
+  image.close();
+
+  let quality = 0.85;
+  let blob: Blob | null = null;
+
+  while (quality >= 0.4) {
+    blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(
+        resolve,
+        "image/jpeg",
+        quality
+      );
+    });
+
+    if (
+      blob &&
+      blob.size <= 700 * 1024
+    ) {
+      break;
+    }
+
+    quality -= 0.1;
+  }
+
+  if (!blob) {
+    throw new Error(
+      "Gagal memampatkan gambar."
+    );
+  }
+
+  if (
+    blob.size >
+    3 * 1024 * 1024
+  ) {
+    throw new Error(
+      "Gambar masih melebihi had 3 MB selepas compression."
+    );
+  }
+
+  return new File(
+    [blob],
+    "participant-photo.jpg",
+    {
+      type: "image/jpeg",
+    }
+  );
+}
+
 export default function EditMuridPage() {
   const [schools, setSchools] = useState<School[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -72,22 +170,29 @@ export default function EditMuridPage() {
   const [currentPage, setCurrentPage] = useState("0");
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] =
+    useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
 
-  // =========================================================
-  // LOAD SEKOLAH & PESERTA
-  // =========================================================
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const groups = Array.from(
+    { length: 10 },
+    (_, index) => index + 1
+  );
+
+  // =====================================================
+  // LOAD DATA
+  // =====================================================
 
   async function loadData() {
     setLoading(true);
-    setMessage("");
 
-    try {
-      const [schoolsResult, participantsResult] = await Promise.all([
+    const [schoolsResult, participantsResult] =
+      await Promise.all([
         supabase.rpc("get_active_schools"),
 
         supabase
@@ -104,78 +209,116 @@ export default function EditMuridPage() {
             `
           )
           .eq("is_active", true)
-          .order("name", { ascending: true }),
+          .order("name", {
+            ascending: true,
+          }),
       ]);
 
-      if (schoolsResult.error) {
-        throw new Error(
-          `GAGAL LOAD SEKOLAH: ${schoolsResult.error.message}`
-        );
-      }
-
-      if (participantsResult.error) {
-        throw new Error(
-          `GAGAL LOAD MURID: ${participantsResult.error.message}`
-        );
-      }
-
-      setSchools((schoolsResult.data ?? []) as School[]);
-      setParticipants((participantsResult.data ?? []) as Participant[]);
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? `❌ ${error.message}`
-          : "❌ Gagal memuatkan data."
+    if (schoolsResult.error) {
+      setError(
+        `Gagal memuatkan sekolah: ${schoolsResult.error.message}`
       );
-    } finally {
-      setLoading(false);
+    } else {
+      setSchools(
+        (schoolsResult.data ?? []) as School[]
+      );
     }
+
+    if (participantsResult.error) {
+      setError(
+        `Gagal memuatkan murid: ${participantsResult.error.message}`
+      );
+    } else {
+      setParticipants(
+        (participantsResult.data ?? []) as Participant[]
+      );
+    }
+
+    setLoading(false);
   }
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
-  // =========================================================
+  // =====================================================
   // FILTER
-  // =========================================================
+  // =====================================================
 
   const filteredParticipants = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+    const keyword =
+      search.trim().toLowerCase();
 
-    return participants.filter((participant) => {
-      const schoolMatch =
-        selectedSchool === "all" ||
-        participant.school_id === selectedSchool;
+    return participants.filter(
+      (participant) => {
+        const schoolMatch =
+          selectedSchool === "all" ||
+          participant.school_id ===
+            selectedSchool;
 
-      const groupMatch =
-        selectedGroup === "all" ||
-        String(participant.group_number ?? "") === selectedGroup;
+        const groupMatch =
+          selectedGroup === "all" ||
+          String(
+            participant.group_number ?? ""
+          ) === selectedGroup;
 
-      const searchMatch =
-        !keyword ||
-        participant.name.toLowerCase().includes(keyword);
+        const searchMatch =
+          !keyword ||
+          participant.name
+            .toLowerCase()
+            .includes(keyword);
 
-      return schoolMatch && groupMatch && searchMatch;
-    });
-  }, [participants, selectedSchool, selectedGroup, search]);
+        return (
+          schoolMatch &&
+          groupMatch &&
+          searchMatch
+        );
+      }
+    );
+  }, [
+    participants,
+    selectedSchool,
+    selectedGroup,
+    search,
+  ]);
 
-  // =========================================================
+  // =====================================================
   // PILIH MURID
-  // =========================================================
+  // =====================================================
 
-  function handleSelectParticipant(participant: Participant) {
-    setSelectedParticipant(participant);
+  function handleSelectParticipant(
+    participant: Participant
+  ) {
+    setSelectedParticipant(
+      participant
+    );
 
     setName(participant.name);
-    setSchoolId(participant.school_id);
-    setGroupNumber(String(participant.group_number ?? 1));
-    setCurrentPage(String(participant.current_page ?? 0));
+
+    setSchoolId(
+      participant.school_id
+    );
+
+    setGroupNumber(
+      String(
+        participant.group_number ?? 1
+      )
+    );
+
+    setCurrentPage(
+      String(
+        participant.current_page ?? 0
+      )
+    );
 
     setPhotoFile(null);
-    setPhotoPreview(participant.photo_url);
 
-    setMessage("");
+    setPhotoPreview(
+      participant.photo_url
+    );
+
+    setError("");
+    setSuccess("");
 
     window.scrollTo({
       top: 0,
@@ -183,135 +326,89 @@ export default function EditMuridPage() {
     });
   }
 
-  // =========================================================
+  // =====================================================
   // PILIH GAMBAR
-  // =========================================================
+  // =====================================================
 
-  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  function handlePhotoChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      event.target.files?.[0];
 
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setMessage("❌ Sila pilih fail gambar.");
+      setError(
+        "Sila pilih fail gambar."
+      );
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setMessage("❌ Saiz gambar terlalu besar. Maksimum 10MB.");
+    if (
+      file.size >
+      15 * 1024 * 1024
+    ) {
+      setError(
+        "Gambar terlalu besar. Had maksimum ialah 15 MB."
+      );
       return;
     }
 
     setPhotoFile(file);
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl =
+      URL.createObjectURL(file);
+
     setPhotoPreview(previewUrl);
 
-    setMessage("");
+    setError("");
+    setSuccess("");
   }
 
-  // =========================================================
-  // COMPRESS GAMBAR
-  // =========================================================
-
-  async function compressImage(file: File): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      const objectUrl = URL.createObjectURL(file);
-
-      image.onload = () => {
-        try {
-          const maxWidth = 1000;
-          const maxHeight = 1000;
-
-          let width = image.width;
-          let height = image.height;
-
-          if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(
-              maxWidth / width,
-              maxHeight / height
-            );
-
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-
-          const canvas = document.createElement("canvas");
-
-          canvas.width = width;
-          canvas.height = height;
-
-          const ctx = canvas.getContext("2d");
-
-          if (!ctx) {
-            URL.revokeObjectURL(objectUrl);
-            reject(new Error("Canvas tidak disokong."));
-            return;
-          }
-
-          ctx.drawImage(image, 0, 0, width, height);
-
-          canvas.toBlob(
-            (blob) => {
-              URL.revokeObjectURL(objectUrl);
-
-              if (!blob) {
-                reject(new Error("Gagal menghasilkan gambar."));
-                return;
-              }
-
-              resolve(blob);
-            },
-            "image/jpeg",
-            0.82
-          );
-        } catch (error) {
-          URL.revokeObjectURL(objectUrl);
-          reject(error);
-        }
-      };
-
-      image.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error("Gagal membaca gambar."));
-      };
-
-      image.src = objectUrl;
-    });
-  }
-
-  // =========================================================
+  // =====================================================
   // UPLOAD GAMBAR
-  // =========================================================
+  // =====================================================
 
   async function uploadParticipantPhoto(
     participantId: string,
     file: File
   ) {
-    let compressed: Blob;
+    let compressedFile: File;
 
     try {
-      compressed = await compressImage(file);
-    } catch (error) {
+      compressedFile =
+        await compressImage(file);
+    } catch (compressionError) {
+      const message =
+        compressionError instanceof Error
+          ? compressionError.message
+          : "Gagal memproses gambar.";
+
       throw new Error(
-        `LANGKAH COMPRESSION GAMBAR GAGAL: ${
-          error instanceof Error
-            ? error.message
-            : "Tidak diketahui"
-        }`
+        `LANGKAH COMPRESSION GAMBAR GAGAL: ${message}`
       );
     }
 
-    const filePath = `${participantId}/profile.jpg`;
+    const path =
+      `${participantId}/profile.jpg`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("participant-photos")
-      .upload(filePath, compressed, {
-        cacheControl: "3600",
-        contentType: "image/jpeg",
-        upsert: true,
-      });
+    const {
+      error: uploadError,
+    } =
+      await supabase.storage
+        .from("participant-photos")
+        .upload(
+          path,
+          compressedFile,
+          {
+            upsert: true,
+            contentType:
+              "image/jpeg",
+            cacheControl:
+              "3600",
+          }
+        );
 
     if (uploadError) {
       throw new Error(
@@ -319,73 +416,142 @@ export default function EditMuridPage() {
       );
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("participant-photos")
-      .getPublicUrl(filePath);
+    const {
+      data: {
+        publicUrl,
+      },
+    } =
+      supabase.storage
+        .from(
+          "participant-photos"
+        )
+        .getPublicUrl(path);
 
-    if (!publicUrlData?.publicUrl) {
+    if (!publicUrl) {
       throw new Error(
-        "LANGKAH PUBLIC URL GAGAL: URL gambar tidak berjaya diperoleh."
+        "LANGKAH PUBLIC URL GAGAL: URL gambar tidak dapat diperoleh."
       );
     }
 
-    return `${publicUrlData.publicUrl}?v=${Date.now()}`;
+    const photoUrl =
+      `${publicUrl}?v=${Date.now()}`;
+
+    const {
+      error: photoError,
+    } =
+      await supabase.rpc(
+        "update_participant_photo",
+        {
+          p_participant_id:
+            participantId,
+
+          p_photo_url:
+            photoUrl,
+        }
+      );
+
+    if (photoError) {
+      throw new Error(
+        `LANGKAH SIMPAN URL GAMBAR GAGAL: ${photoError.message}`
+      );
+    }
+
+    return photoUrl;
   }
 
-  // =========================================================
+  // =====================================================
   // SIMPAN PERUBAHAN
-  // =========================================================
+  // =====================================================
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
+  async function handleSave(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     if (!selectedParticipant) {
-      setMessage("❌ Sila pilih murid terlebih dahulu.");
+      setError(
+        "Sila pilih murid terlebih dahulu."
+      );
       return;
     }
 
-    const cleanName = name.trim();
-    const page = Number(currentPage);
-    const group = Number(groupNumber);
+    const cleanName =
+      name.trim();
+
+    const page =
+      Number(currentPage);
+
+    const group =
+      Number(groupNumber);
 
     if (!cleanName) {
-      setMessage("❌ Nama murid diperlukan.");
+      setError(
+        "Nama murid diperlukan."
+      );
       return;
     }
 
     if (!schoolId) {
-      setMessage("❌ Sila pilih sekolah.");
+      setError(
+        "Sila pilih sekolah."
+      );
       return;
     }
 
-    if (!Number.isInteger(group) || group < 1 || group > 10) {
-      setMessage("❌ Kumpulan mestilah antara 1 hingga 10.");
+    if (
+      !Number.isInteger(group) ||
+      group < 1 ||
+      group > 10
+    ) {
+      setError(
+        "Kumpulan mestilah antara 1 hingga 10."
+      );
       return;
     }
 
-    if (!Number.isInteger(page) || page < 0 || page > 604) {
-      setMessage(
-        "❌ Muka surat mestilah antara 0 hingga 604."
+    if (
+      !Number.isInteger(page) ||
+      page < 0 ||
+      page > 604
+    ) {
+      setError(
+        "Muka surat mestilah antara 0 hingga 604."
       );
       return;
     }
 
     setSaving(true);
-    setMessage("");
+    setError("");
+    setSuccess("");
 
     try {
-      // -------------------------------------------------------
-      // 1. KEMASKINI MAKLUMAT PESERTA
-      // -------------------------------------------------------
+      // -------------------------------------------------
+      // KEMASKINI MAKLUMAT
+      // -------------------------------------------------
 
-      const { data: updatedParticipant, error: updateError } =
-        await supabase.rpc("update_participant", {
-          p_participant_id: selectedParticipant.id,
-          p_school_id: schoolId,
-          p_name: cleanName,
-          p_group_number: group,
-          p_current_page: page,
-        });
+      const {
+        data,
+        error: updateError,
+      } =
+        await supabase.rpc(
+          "update_participant",
+          {
+            p_participant_id:
+              selectedParticipant.id,
+
+            p_school_id:
+              schoolId,
+
+            p_name:
+              cleanName,
+
+            p_group_number:
+              group,
+
+            p_current_page:
+              page,
+          }
+        );
 
       if (updateError) {
         throw new Error(
@@ -393,524 +559,775 @@ export default function EditMuridPage() {
         );
       }
 
-      // -------------------------------------------------------
-      // 2. UPLOAD GAMBAR JIKA ADA GAMBAR BAHARU
-      // -------------------------------------------------------
+      let finalPhotoUrl =
+        selectedParticipant.photo_url;
 
-      let finalPhotoUrl = selectedParticipant.photo_url;
+      // -------------------------------------------------
+      // UPLOAD GAMBAR JIKA ADA
+      // -------------------------------------------------
 
       if (photoFile) {
-        finalPhotoUrl = await uploadParticipantPhoto(
-          selectedParticipant.id,
-          photoFile
-        );
-
-        const { error: photoUpdateError } = await supabase.rpc(
-          "update_participant_photo",
-          {
-            p_participant_id: selectedParticipant.id,
-            p_photo_url: finalPhotoUrl,
-          }
-        );
-
-        if (photoUpdateError) {
-          throw new Error(
-            `LANGKAH SIMPAN URL GAMBAR GAGAL: ${photoUpdateError.message}`
+        finalPhotoUrl =
+          await uploadParticipantPhoto(
+            selectedParticipant.id,
+            photoFile
           );
-        }
       }
 
-      // -------------------------------------------------------
-      // 3. KEMASKINI PAPARAN TEMPATAN
-      // -------------------------------------------------------
+      const updatedParticipant: Participant =
+        {
+          ...(data as Participant),
+          photo_url:
+            finalPhotoUrl,
+        };
 
-      const updated: Participant = {
-        ...(updatedParticipant as Participant),
-        photo_url: finalPhotoUrl,
-      };
+      // -------------------------------------------------
+      // UPDATE STATE
+      // -------------------------------------------------
 
-      setParticipants((current) =>
-        current.map((participant) =>
-          participant.id === updated.id
-            ? updated
-            : participant
-        )
+      setParticipants(
+        (current) =>
+          current.map(
+            (participant) =>
+              participant.id ===
+              updatedParticipant.id
+                ? updatedParticipant
+                : participant
+          )
       );
 
-      setSelectedParticipant(updated);
+      setSelectedParticipant(
+        updatedParticipant
+      );
 
       setPhotoFile(null);
-      setPhotoPreview(finalPhotoUrl);
 
-      setMessage("✅ Maklumat murid berjaya dikemaskini.");
+      setPhotoPreview(
+        finalPhotoUrl
+      );
 
-      // Refresh data sebenar dari database
+      setSuccess(
+        `✅ Maklumat "${cleanName}" berjaya dikemaskini.`
+      );
+
+      // Refresh database
       await loadData();
 
-      // Kekalkan murid yang sedang diedit
-      setSelectedParticipant(updated);
-      setName(updated.name);
-      setSchoolId(updated.school_id);
-      setGroupNumber(String(updated.group_number ?? 1));
-      setCurrentPage(String(updated.current_page ?? 0));
-      setPhotoPreview(updated.photo_url);
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? `❌ ${error.message}`
-          : "❌ Gagal menyimpan perubahan."
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Gagal menyimpan perubahan."
       );
     } finally {
       setSaving(false);
     }
   }
 
-  // =========================================================
-  // BATAL EDIT
-  // =========================================================
+  // =====================================================
+  // BATAL
+  // =====================================================
 
   function handleCancel() {
     setSelectedParticipant(null);
+
     setName("");
     setSchoolId("");
     setGroupNumber("1");
     setCurrentPage("0");
+
     setPhotoFile(null);
     setPhotoPreview(null);
-    setMessage("");
+
+    setError("");
+    setSuccess("");
   }
 
-  // =========================================================
-  // SEKOLAH HELPER
-  // =========================================================
+  // =====================================================
+  // SEKOLAH
+  // =====================================================
 
-  function getSchoolName(schoolId: string) {
-    const school = schools.find((item) => item.id === schoolId);
+  function getSchoolName(
+    schoolId: string
+  ) {
+    const school =
+      schools.find(
+        (item) =>
+          item.id === schoolId
+      );
 
-    if (!school) return "Sekolah tidak diketahui";
+    if (!school) {
+      return "Sekolah tidak diketahui";
+    }
 
-    return `${school.code} – ${school.name}`;
+    return `${school.code} · ${school.name}`;
   }
+
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-white">
+        Memuatkan halaman Edit Murid…
+      </main>
+    );
+  }
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-950 text-white">
 
-        {/* HEADER */}
-        <div className="mb-6">
-          <Link
-            href="/dashboard"
-            className="mb-4 inline-flex items-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-          >
-            ← Kembali ke Dashboard
-          </Link>
+      {/* HEADER */}
+      <header className="border-b border-white/10 bg-slate-900">
 
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h1 className="text-2xl font-black text-slate-900">
-              ✏️ EDIT MURID
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
+
+          <div>
+
+            <h1 className="text-lg font-black sm:text-xl">
+              📖 QURAN RANKING{" "}
+              <span className="text-emerald-400">
+                LIVE
+              </span>
             </h1>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Betulkan maklumat murid atau tukar gambar.
+            <p className="mt-1 text-[10px] text-slate-400 sm:text-xs">
+              PROGRAM KHATAM MURID · PPD MACHANG
             </p>
+
           </div>
+
+          <Link
+            href="/dashboard"
+            className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold transition hover:bg-white/20 sm:px-4 sm:text-sm"
+          >
+            🏠 Dashboard
+          </Link>
+
         </div>
 
-        {/* MESSAGE */}
-        {message && (
-          <div className="mb-5 rounded-xl bg-white p-4 font-semibold shadow-sm ring-1 ring-slate-200">
-            {message}
+      </header>
+
+      {/* CONTENT */}
+      <section className="mx-auto max-w-5xl px-4 py-7 sm:px-6 sm:py-10">
+
+        {/* BACK */}
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:border-emerald-400/30 hover:text-white"
+        >
+          ← Kembali ke Dashboard
+        </Link>
+
+        {/* TITLE */}
+        <div className="mt-7">
+
+          <p className="text-sm font-semibold text-emerald-400">
+            PENGURUSAN MURID
+          </p>
+
+          <h2 className="mt-2 text-3xl font-black sm:text-4xl">
+            ✏️ Edit Murid
+          </h2>
+
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+            Cari murid untuk membetulkan maklumat,
+            menukar kumpulan atau memuat naik gambar.
+          </p>
+
+        </div>
+
+        {/* ERROR */}
+        {error && (
+          <div className="mt-6 whitespace-pre-line rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-300">
+            ❌ {error}
           </div>
         )}
 
-        {/* BORANG EDIT */}
-        {selectedParticipant && (
-          <form
-            onSubmit={handleSave}
-            className="mb-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
-          >
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">
-                  Maklumat Murid
-                </h2>
-
-                <p className="text-sm text-slate-500">
-                  Kemaskini maklumat di bawah.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200"
-              >
-                ✕ Batal
-              </button>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-[180px_1fr]">
-
-              {/* FOTO */}
-              <div className="flex flex-col items-center">
-                <div className="mb-3 h-40 w-40 overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
-                  {photoPreview ? (
-                    <img
-                      src={photoPreview}
-                      alt={name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-6xl">
-                      👤
-                    </div>
-                  )}
-                </div>
-
-                <label className="cursor-pointer rounded-lg bg-slate-900 px-4 py-2 text-center text-sm font-bold text-white hover:bg-slate-800">
-                  📷 Tukar Gambar
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                    className="hidden"
-                  />
-                </label>
-
-                {photoFile && (
-                  <p className="mt-2 max-w-[180px] break-words text-center text-xs text-green-600">
-                    ✓ {photoFile.name}
-                  </p>
-                )}
-              </div>
-
-              {/* DATA */}
-              <div className="grid gap-4 sm:grid-cols-2">
-
-                {/* NAMA */}
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-sm font-bold text-slate-700">
-                    Nama Murid
-                  </label>
-
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(event) =>
-                      setName(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                    placeholder="Nama murid"
-                  />
-                </div>
-
-                {/* SEKOLAH */}
-                <div>
-                  <label className="mb-1 block text-sm font-bold text-slate-700">
-                    Sekolah
-                  </label>
-
-                  <select
-                    value={schoolId}
-                    onChange={(event) =>
-                      setSchoolId(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-slate-500"
-                  >
-                    <option value="">
-                      -- Pilih Sekolah --
-                    </option>
-
-                    {schools.map((school) => (
-                      <option key={school.id} value={school.id}>
-                        {school.code} – {school.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* KUMPULAN */}
-                <div>
-                  <label className="mb-1 block text-sm font-bold text-slate-700">
-                    Kumpulan
-                  </label>
-
-                  <select
-                    value={groupNumber}
-                    onChange={(event) =>
-                      setGroupNumber(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-slate-500"
-                  >
-                    {Array.from(
-                      { length: 10 },
-                      (_, index) => index + 1
-                    ).map((group) => (
-                      <option key={group} value={group}>
-                        Kumpulan {group}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* MUKA SURAT */}
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-sm font-bold text-slate-700">
-                    Muka Surat Semasa
-                  </label>
-
-                  <input
-                    type="number"
-                    min={0}
-                    max={604}
-                    value={currentPage}
-                    onChange={(event) =>
-                      setCurrentPage(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                  />
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    0 – 604
-                  </p>
-                </div>
-
-                {/* LEVEL */}
-                <div className="sm:col-span-2">
-                  <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Level Semasa
-                    </p>
-
-                    <p className="mt-1 text-lg font-black text-slate-900">
-                      {getLevelIcon(getLevel(Number(currentPage)))}{" "}
-                      {getLevel(Number(currentPage))}
-                    </p>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* SIMPAN */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={saving}
-                className="rounded-xl bg-slate-100 px-6 py-3 font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50"
-              >
-                Batal
-              </button>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-xl bg-slate-900 px-6 py-3 font-black text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {saving
-                  ? "⏳ MENYIMPAN..."
-                  : "💾 SIMPAN PERUBAHAN"}
-              </button>
-            </div>
-          </form>
+        {/* SUCCESS */}
+        {success && (
+          <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-300">
+            {success}
+          </div>
         )}
 
-        {/* SENARAI MURID */}
-        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        {/* EDIT FORM */}
+        {selectedParticipant && (
+          <div className="mt-7 rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-8">
 
-          <div className="mb-5">
-            <h2 className="text-xl font-black text-slate-900">
+            <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+
+              <p className="text-sm font-bold text-emerald-400">
+                ✏️ Maklumat Murid
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
+                Betulkan maklumat murid atau tukar
+                gambar. Pastikan semua maklumat betul
+                sebelum menekan simpan.
+              </p>
+
+            </div>
+
+            <form
+              onSubmit={handleSave}
+              className="grid gap-5 lg:grid-cols-2"
+            >
+
+              {/* FOTO */}
+              <div className="lg:col-span-2">
+
+                <label className="text-sm font-semibold text-slate-300">
+                  📷 Gambar Murid
+                </label>
+
+                <div className="mt-3 flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-slate-800 p-5 sm:flex-row">
+
+                  <div className="h-32 w-32 shrink-0 overflow-hidden rounded-2xl bg-slate-700 ring-1 ring-white/10">
+
+                    {photoPreview ? (
+                      <img
+                        src={photoPreview}
+                        alt={name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-5xl">
+                        👤
+                      </div>
+                    )}
+
+                  </div>
+
+                  <div className="w-full">
+
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={
+                        handlePhotoChange
+                      }
+                      className="block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-3 file:font-bold file:text-slate-950 hover:file:bg-emerald-400"
+                    />
+
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      JPG, PNG atau WebP.
+                      Gambar akan dimampatkan secara
+                      automatik.
+                    </p>
+
+                    {photoFile && (
+                      <p className="mt-2 text-xs font-semibold text-emerald-400">
+                        ✓ Gambar baharu dipilih:{" "}
+                        {photoFile.name}
+                      </p>
+                    )}
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* NAMA */}
+              <div>
+
+                <label className="text-sm font-semibold text-slate-300">
+                  👤 Nama Murid
+                </label>
+
+                <input
+                  value={name}
+                  onChange={(event) =>
+                    setName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Nama penuh murid"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
+                />
+
+              </div>
+
+              {/* SEKOLAH */}
+              <div>
+
+                <label className="text-sm font-semibold text-slate-300">
+                  🏫 Sekolah
+                </label>
+
+                <select
+                  value={schoolId}
+                  onChange={(event) =>
+                    setSchoolId(
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
+                >
+
+                  {schools.map(
+                    (school) => (
+                      <option
+                        key={school.id}
+                        value={school.id}
+                      >
+                        {school.code} ·{" "}
+                        {school.name}
+                      </option>
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              {/* KUMPULAN */}
+              <div>
+
+                <label className="text-sm font-semibold text-slate-300">
+                  👥 Kumpulan
+                </label>
+
+                <select
+                  value={groupNumber}
+                  onChange={(event) =>
+                    setGroupNumber(
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
+                >
+
+                  {groups.map(
+                    (group) => (
+                      <option
+                        key={group}
+                        value={group}
+                      >
+                        Kumpulan {group}
+                      </option>
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              {/* MUKA SURAT */}
+              <div>
+
+                <label className="text-sm font-semibold text-slate-300">
+                  📖 Muka Surat Semasa
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  max="604"
+                  value={currentPage}
+                  onChange={(event) =>
+                    setCurrentPage(
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
+                />
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Nilai antara 0 hingga 604.
+                </p>
+
+              </div>
+
+              {/* LEVEL */}
+              <div className="lg:col-span-2">
+
+                <div className="rounded-2xl border border-white/10 bg-slate-800 p-5">
+
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Level Berdasarkan Muka Surat
+                  </p>
+
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {getLevelIcon(
+                      getLevel(
+                        Number(currentPage)
+                      )
+                    )}{" "}
+                    {getLevel(
+                      Number(currentPage)
+                    )}
+                  </p>
+
+                </div>
+
+              </div>
+
+              {/* BUTTON */}
+              <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row">
+
+                <button
+                  type="button"
+                  onClick={
+                    handleCancel
+                  }
+                  disabled={saving}
+                  className="rounded-2xl border border-white/10 bg-slate-800 px-6 py-4 font-bold text-slate-300 transition hover:bg-slate-700 disabled:opacity-50 sm:w-auto"
+                >
+                  ✕ Batal
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 rounded-2xl bg-emerald-500 py-4 text-base font-black text-slate-950 shadow-lg shadow-emerald-500/10 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:text-lg"
+                >
+                  {saving
+                    ? "⏳ Menyimpan perubahan…"
+                    : "💾 SIMPAN PERUBAHAN"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+        )}
+
+        {/* SEARCH */}
+        <div className="mt-7 rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-8">
+
+          <div className="mb-6">
+
+            <p className="text-sm font-semibold text-emerald-400">
+              SENARAI MURID
+            </p>
+
+            <h3 className="mt-2 text-2xl font-black">
               🔎 Cari Murid
-            </h2>
+            </h3>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-400">
               Pilih murid yang hendak diedit.
             </p>
+
           </div>
 
           {/* FILTER */}
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-3">
 
-            {/* SEARCH */}
-            <div className="md:col-span-1">
+            <div>
+
+              <label className="text-sm font-semibold text-slate-300">
+                🔎 Nama
+              </label>
+
               <input
-                type="text"
                 value={search}
                 onChange={(event) =>
-                  setSearch(event.target.value)
+                  setSearch(
+                    event.target.value
+                  )
                 }
-                placeholder="🔎 Taip nama murid..."
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
+                placeholder="Taip nama murid..."
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
               />
+
             </div>
 
-            {/* SEKOLAH */}
-            <select
-              value={selectedSchool}
-              onChange={(event) =>
-                setSelectedSchool(event.target.value)
-              }
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none"
-            >
-              <option value="all">
-                🏫 Semua Sekolah
-              </option>
+            <div>
 
-              {schools.map((school) => (
-                <option key={school.id} value={school.id}>
-                  {school.code} – {school.name}
+              <label className="text-sm font-semibold text-slate-300">
+                🏫 Sekolah
+              </label>
+
+              <select
+                value={selectedSchool}
+                onChange={(event) =>
+                  setSelectedSchool(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
+              >
+
+                <option value="all">
+                  Semua Sekolah
                 </option>
-              ))}
-            </select>
 
-            {/* KUMPULAN */}
-            <select
-              value={selectedGroup}
-              onChange={(event) =>
-                setSelectedGroup(event.target.value)
-              }
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none"
-            >
-              <option value="all">
-                👥 Semua Kumpulan
-              </option>
+                {schools.map(
+                  (school) => (
+                    <option
+                      key={school.id}
+                      value={school.id}
+                    >
+                      {school.code} ·{" "}
+                      {school.name}
+                    </option>
+                  )
+                )}
 
-              {Array.from(
-                { length: 10 },
-                (_, index) => index + 1
-              ).map((group) => (
-                <option key={group} value={group}>
-                  Kumpulan {group}
+              </select>
+
+            </div>
+
+            <div>
+
+              <label className="text-sm font-semibold text-slate-300">
+                👥 Kumpulan
+              </label>
+
+              <select
+                value={selectedGroup}
+                onChange={(event) =>
+                  setSelectedGroup(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-4 text-white outline-none focus:border-emerald-400"
+              >
+
+                <option value="all">
+                  Semua Kumpulan
                 </option>
-              ))}
-            </select>
+
+                {groups.map(
+                  (group) => (
+                    <option
+                      key={group}
+                      value={group}
+                    >
+                      Kumpulan {group}
+                    </option>
+                  )
+                )}
+
+              </select>
+
+            </div>
 
           </div>
 
           {/* COUNT */}
-          <div className="mt-4 text-sm font-semibold text-slate-500">
+          <div className="mt-5 rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm text-slate-400">
             Menunjukkan{" "}
-            <span className="font-black text-slate-900">
+            <span className="font-black text-emerald-400">
               {filteredParticipants.length}
             </span>{" "}
             murid
           </div>
 
-          {/* LOADING */}
-          {loading && (
-            <div className="py-12 text-center text-slate-500">
-              ⏳ Memuatkan senarai murid...
-            </div>
-          )}
-
           {/* EMPTY */}
-          {!loading && filteredParticipants.length === 0 && (
-            <div className="py-12 text-center">
-              <div className="text-5xl">🔍</div>
+          {filteredParticipants.length === 0 && (
+            <div className="mt-5 rounded-2xl border border-white/10 bg-slate-800 p-10 text-center">
 
-              <p className="mt-3 font-bold text-slate-700">
+              <div className="text-5xl">
+                🔍
+              </div>
+
+              <p className="mt-3 font-bold text-slate-300">
                 Tiada murid ditemui.
               </p>
 
               <p className="mt-1 text-sm text-slate-500">
-                Cuba ubah carian atau pilihan filter.
+                Cuba ubah carian atau pilihan
+                sekolah/kumpulan.
               </p>
+
             </div>
           )}
 
           {/* LIST */}
-          {!loading && filteredParticipants.length > 0 && (
+          {filteredParticipants.length > 0 && (
             <div className="mt-5 grid gap-3">
 
-              {filteredParticipants.map((participant) => {
-                const level = getLevel(
-                  participant.current_page
-                );
+              {filteredParticipants.map(
+                (participant) => {
+                  const level =
+                    getLevel(
+                      participant.current_page
+                    );
 
-                return (
-                  <button
-                    key={participant.id}
-                    type="button"
-                    onClick={() =>
-                      handleSelectParticipant(participant)
-                    }
-                    className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition hover:bg-slate-50 ${
-                      selectedParticipant?.id === participant.id
-                        ? "border-slate-900 bg-slate-50"
-                        : "border-slate-200 bg-white"
-                    }`}
-                  >
+                  const selected =
+                    selectedParticipant?.id ===
+                    participant.id;
 
-                    {/* PHOTO */}
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                      {participant.photo_url ? (
-                        <img
-                          src={participant.photo_url}
-                          alt={participant.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-3xl">
-                          👤
+                  return (
+                    <button
+                      key={participant.id}
+                      type="button"
+                      onClick={() =>
+                        handleSelectParticipant(
+                          participant
+                        )
+                      }
+                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                        selected
+                          ? "border-emerald-400/50 bg-emerald-500/10"
+                          : "border-white/10 bg-slate-800 hover:border-emerald-400/30 hover:bg-slate-700"
+                      }`}
+                    >
+
+                      <div className="flex items-center gap-4">
+
+                        {/* PHOTO */}
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-700">
+
+                          {participant.photo_url ? (
+                            <img
+                              src={
+                                participant.photo_url
+                              }
+                              alt={
+                                participant.name
+                              }
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-3xl">
+                              👤
+                            </div>
+                          )}
+
                         </div>
-                      )}
-                    </div>
 
-                    {/* INFO */}
-                    <div className="min-w-0 flex-1">
+                        {/* INFO */}
+                        <div className="min-w-0 flex-1">
 
-                      <div className="truncate font-black text-slate-900">
-                        {participant.name}
+                          <div className="truncate font-black text-white">
+                            {participant.name}
+                          </div>
+
+                          <div className="mt-1 truncate text-xs text-slate-400">
+                            🏫{" "}
+                            {getSchoolName(
+                              participant.school_id
+                            )}
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-400">
+
+                            <span className="rounded-lg bg-slate-700 px-2 py-1">
+                              👥 Kumpulan{" "}
+                              {participant.group_number ??
+                                "-"}
+                            </span>
+
+                            <span className="rounded-lg bg-slate-700 px-2 py-1">
+                              📖 M/S{" "}
+                              {
+                                participant.current_page
+                              }
+                            </span>
+
+                            <span className="rounded-lg bg-slate-700 px-2 py-1">
+                              {getLevelIcon(
+                                level
+                              )}{" "}
+                              {level}
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                        {/* EDIT */}
+                        <div className="hidden shrink-0 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 sm:block">
+                          ✏️ EDIT
+                        </div>
+
                       </div>
 
-                      <div className="mt-1 truncate text-xs text-slate-500">
-                        🏫 {getSchoolName(participant.school_id)}
+                      <div className="mt-3 text-right text-xs font-bold text-emerald-400 sm:hidden">
+                        ✏️ Tekan untuk Edit
                       </div>
 
-                      <div className="mt-1 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
-                        <span>
-                          👥 Kumpulan{" "}
-                          {participant.group_number ?? "-"}
-                        </span>
-
-                        <span>
-                          📖 M/S{" "}
-                          {participant.current_page}
-                        </span>
-
-                        <span>
-                          {getLevelIcon(level)} {level}
-                        </span>
-                      </div>
-
-                    </div>
-
-                    {/* EDIT */}
-                    <div className="shrink-0 rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white">
-                      ✏️ EDIT
-                    </div>
-
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                }
+              )}
 
             </div>
           )}
 
-        </section>
+        </div>
 
-        {/* FOOTER */}
-        <div className="mt-6 text-center">
+        {/* INFO */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+
+          <div className="rounded-2xl border border-white/10 bg-slate-900 p-5">
+
+            <p className="text-2xl">
+              ✏️
+            </p>
+
+            <p className="mt-2 font-bold">
+              Betulkan Maklumat
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Nama, sekolah, kumpulan dan muka surat
+              boleh dikemaskini.
+            </p>
+
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-slate-900 p-5">
+
+            <p className="text-2xl">
+              📷
+            </p>
+
+            <p className="mt-2 font-bold">
+              Tukar Gambar
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Guru boleh menambah atau menggantikan
+              gambar murid.
+            </p>
+
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-slate-900 p-5">
+
+            <p className="text-2xl">
+              👥
+            </p>
+
+            <p className="mt-2 font-bold">
+              Urus Kumpulan
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Pindahkan murid ke Kumpulan 1 hingga
+              Kumpulan 10.
+            </p>
+
+          </div>
+
+        </div>
+
+        {/* BACK */}
+        <div className="mt-8 text-center">
+
           <Link
             href="/dashboard"
-            className="text-sm font-bold text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-5 py-3 text-sm font-bold text-slate-300 transition hover:border-emerald-400/30 hover:text-white"
           >
             ← Kembali ke Dashboard
           </Link>
+
         </div>
 
-      </div>
+      </section>
+
     </main>
   );
 }
