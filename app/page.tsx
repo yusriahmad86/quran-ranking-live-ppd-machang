@@ -53,11 +53,15 @@ export default function LoginPage() {
             </span>
           </h1>
 
-          <p className="text-slate-400 mt-2">
-            SK AYER MERAH
+          <p className="text-yellow-400 font-bold mt-3">
+            PROGRAM KHATAM MURID
           </p>
 
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xl font-black text-white mt-1">
+            PPD MACHANG
+          </p>
+
+          <p className="text-sm text-slate-500 mt-2">
             Sistem Pemantauan Bacaan Al-Quran Murid
           </p>
 
@@ -183,7 +187,7 @@ export default function LoginPage() {
         {/* FOOTER */}
 
         <p className="text-center text-xs text-slate-600 mt-8">
-          © 2026 QURAN RANKING LIVE · SK AYER MERAH
+          © 2026 QURAN RANKING LIVE · PROGRAM KHATAM MURID PPD MACHANG
         </p>
 
       </div>

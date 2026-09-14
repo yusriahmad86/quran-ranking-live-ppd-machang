@@ -1,745 +1,745 @@
+"use client";
+
 import Link from "next/link";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { supabase } from "@/lib/supabase";
-import { requireAuth } from "@/lib/auth";
 
-function getLevel(page: number) {
-  if (page === 604) return "GRANDMASTER";
-  if (page >= 401) return "HEROIC";
-  if (page >= 301) return "DIAMOND";
-  if (page >= 201) return "PLATINUM";
-  if (page >= 101) return "GOLD";
-  if (page >= 51) return "SILVER";
-  return "BRONZE";
-}
+type School = {
+  id: string;
+  code: string;
+  name: string;
+};
 
-function getLevelIcon(level: string) {
-  switch (level) {
-    case "GRANDMASTER":
-      return "👑";
-    case "HEROIC":
-      return "⚔️";
-    case "DIAMOND":
-      return "💎";
-    case "PLATINUM":
-      return "💠";
-    case "GOLD":
-      return "🥇";
-    case "SILVER":
-      return "🥈";
-    default:
-      return "🥉";
-  }
-}
+type Participant = {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  current_page: number;
+  grandmaster_at: string | null;
+};
 
-export default async function GuruDashboard() {
-  await requireAuth();
+type ReadingRecord = {
+  id: string;
+  page_from: number;
+  page_to: number;
+  pages_read: number;
+  reading_date: string;
+  created_at: string;
+};
 
-  // =========================
-  // DATA KELAS
-  // =========================
+function getMalaysiaDate() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kuala_Lumpur",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
 
-  const { data: classes, error: classesError } =
-    await supabase
-      .from("classes")
-      .select("id, name")
-      .order("name");
-
-  // =========================
-  // DATA MURID
-  // =========================
-
-  const { data: students, error: studentsError } =
-    await supabase
-      .from("students")
-      .select(
-        "id, name, photo_url, current_page, class_id"
-      )
-      .order("current_page", {
-        ascending: false,
-      });
-
-  // =========================
-  // RALAT KELAS
-  // =========================
-
-  if (classesError) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white p-10">
-        <h1 className="text-2xl font-bold text-red-400">
-          Ralat mendapatkan kelas
-        </h1>
-
-        <p className="mt-4 text-slate-400">
-          {classesError.message}
-        </p>
-      </main>
-    );
-  }
-
-  // =========================
-  // RALAT MURID
-  // =========================
-
-  if (studentsError) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white p-10">
-        <h1 className="text-2xl font-bold text-red-400">
-          Ralat mendapatkan murid
-        </h1>
-
-        <p className="mt-4 text-slate-400">
-          {studentsError.message}
-        </p>
-      </main>
-    );
-  }
-
-  // =========================
-  // STATISTIK
-  // =========================
-
-  const totalStudents = students?.length ?? 0;
-
-  const totalClasses = classes?.length ?? 0;
-
-  const activeStudents =
-    students?.filter(
-      (student) =>
-        (student.current_page ?? 0) > 0
-    ).length ?? 0;
-
-  const completedStudents =
-    students?.filter(
-      (student) =>
-        (student.current_page ?? 0) === 604
-    ).length ?? 0;
-
-  const totalPages =
-    students?.reduce(
-      (total, student) =>
-        total + (student.current_page ?? 0),
-      0
-    ) ?? 0;
-
-  const averagePage =
-    totalStudents > 0
-      ? Math.round(
-          totalPages / totalStudents
-        )
-      : 0;
-
-  const averagePercentage = Math.min(
-    100,
-    Math.round(
-      (averagePage / 604) * 100
-    )
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
   );
 
-  // =========================
-  // MURID TERATAS
-  // =========================
+  return `${values.year}-${values.month}-${values.day}`;
+}
 
-  const topStudent =
-    students?.[0] ?? null;
+async function compressImage(file: File) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Sila pilih fail gambar.");
+  }
 
-  // =========================
-  // JUMLAH MURID DALAM KELAS
-  // =========================
+  if (file.size > 15 * 1024 * 1024) {
+    throw new Error("Gambar asal terlalu besar. Had gambar asal ialah 15 MB.");
+  }
 
-  function getClassStudentCount(
-    classId: string
+  const image = await createImageBitmap(file);
+  const maxDimension = 1600;
+  const scale = Math.min(
+    1,
+    maxDimension / Math.max(image.width, image.height)
+  );
+
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    image.close();
+    throw new Error("Gagal memproses gambar.");
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+  image.close();
+
+  let quality = 0.85;
+  let blob: Blob | null = null;
+
+  while (quality >= 0.4) {
+    blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", quality);
+    });
+
+    if (blob && blob.size <= 700 * 1024) {
+      break;
+    }
+
+    quality -= 0.1;
+  }
+
+  if (!blob) {
+    throw new Error("Gagal memampatkan gambar.");
+  }
+
+  if (blob.size > 3 * 1024 * 1024) {
+    throw new Error("Gambar masih melebihi had 3 MB selepas compression.");
+  }
+
+  return new File([blob], "participant-photo.jpg", {
+    type: "image/jpeg",
+  });
+}
+
+export default function GuruPage() {
+  const [schools, setSchools] = useState<School[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [records, setRecords] = useState<ReadingRecord[]>([]);
+
+  const [selectedSchoolId, setSelectedSchoolId] = useState("");
+  const [selectedParticipantId, setSelectedParticipantId] = useState("");
+
+  const [newParticipantName, setNewParticipantName] = useState("");
+  const [startingPage, setStartingPage] = useState("0");
+  const [newParticipantPhoto, setNewParticipantPhoto] = useState<File | null>(
+    null
+  );
+
+  const [newPage, setNewPage] = useState("");
+  const [note, setNote] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [savingParticipant, setSavingParticipant] = useState(false);
+  const [savingReading, setSavingReading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const selectedSchool = schools.find(
+    (school) => school.id === selectedSchoolId
+  );
+
+  const selectedParticipant = participants.find(
+    (participant) => participant.id === selectedParticipantId
+  );
+
+  const todayPages = useMemo(
+    () => records.reduce((total, record) => total + record.pages_read, 0),
+    [records]
+  );
+
+  async function loadSchools() {
+    const { data, error } = await supabase
+      .from("schools")
+      .select("id, code, name")
+      .eq("is_active", true)
+      .order("code");
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    setSchools(data ?? []);
+
+    if (data && data.length > 0) {
+      setSelectedSchoolId((current) => current || data[0].id);
+    }
+  }
+
+  async function loadParticipants(schoolId: string) {
+    if (!schoolId) {
+      setParticipants([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("participants")
+      .select("id, name, photo_url, current_page, grandmaster_at")
+      .eq("school_id", schoolId)
+      .eq("is_active", true)
+      .order("current_page", { ascending: false })
+      .order("name");
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    setParticipants(data ?? []);
+    setSelectedParticipantId("");
+    setRecords([]);
+  }
+
+  async function loadRecords(participantId: string) {
+    if (!participantId) {
+      setRecords([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("reading_records")
+      .select("id, page_from, page_to, pages_read, reading_date, created_at")
+      .eq("participant_id", participantId)
+      .eq("reading_date", getMalaysiaDate())
+      .is("voided_at", null)
+      .eq("is_baseline", false)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    setRecords(data ?? []);
+  }
+
+  async function uploadParticipantPhoto(
+    participantId: string,
+    file: File
   ) {
+    const compressedFile = await compressImage(file);
+    const path = `${participantId}/profile.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("participant-photos")
+      .upload(path, compressedFile, {
+        upsert: true,
+        contentType: "image/jpeg",
+        cacheControl: "3600",
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("participant-photos").getPublicUrl(path);
+
+    const photoUrl = `${publicUrl}?v=${Date.now()}`;
+
+    const { error: photoError } = await supabase.rpc(
+      "update_participant_photo",
+      {
+        p_participant_id: participantId,
+        p_photo_url: photoUrl,
+      }
+    );
+
+    if (photoError) {
+      throw new Error(photoError.message);
+    }
+  }
+
+  useEffect(() => {
+    async function initialise() {
+      setLoading(true);
+      setError("");
+      await loadSchools();
+      setLoading(false);
+    }
+
+    void initialise();
+  }, []);
+
+  useEffect(() => {
+    void loadParticipants(selectedSchoolId);
+  }, [selectedSchoolId]);
+
+  useEffect(() => {
+    void loadRecords(selectedParticipantId);
+  }, [selectedParticipantId]);
+
+  async function handleAddParticipant(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const name = newParticipantName.trim();
+    const page = Number(startingPage);
+
+    if (!selectedSchoolId || !name) {
+      setError("Pilih sekolah dan masukkan nama peserta.");
+      return;
+    }
+
+    if (!Number.isInteger(page) || page < 0 || page > 604) {
+      setError("Muka surat permulaan mestilah antara 0 hingga 604.");
+      return;
+    }
+
+    setSavingParticipant(true);
+    setError("");
+    setSuccess("");
+
+    const { data, error } = await supabase.rpc("add_participant", {
+      p_school_id: selectedSchoolId,
+      p_name: name,
+      p_starting_page: page,
+    });
+
+    if (error) {
+      setError(error.message);
+      setSavingParticipant(false);
+      return;
+    }
+
+    const newParticipant = (
+      Array.isArray(data) ? data[0] : data
+    ) as Participant | null;
+
+    try {
+      if (newParticipantPhoto && newParticipant?.id) {
+        await uploadParticipantPhoto(newParticipant.id, newParticipantPhoto);
+      }
+
+      setNewParticipantName("");
+      setStartingPage("0");
+      setNewParticipantPhoto(null);
+
+      setSuccess(
+        "Peserta berjaya ditambah. Muka surat permulaan tidak dikira sebagai bacaan hari ini."
+      );
+
+      await loadParticipants(selectedSchoolId);
+    } catch (uploadError) {
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Peserta berjaya ditambah, tetapi gambar gagal dimuat naik.";
+
+      setError(`Peserta berjaya ditambah, tetapi gambar gagal dimuat naik: ${message}`);
+      await loadParticipants(selectedSchoolId);
+    }
+
+    setSavingParticipant(false);
+  }
+
+  async function handleRecordReading(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const pageTo = Number(newPage);
+
+    if (!selectedParticipant) {
+      setError("Sila pilih peserta dahulu.");
+      return;
+    }
+
+    if (!Number.isInteger(pageTo)) {
+      setError("Masukkan nombor muka surat yang sah.");
+      return;
+    }
+
+    setSavingReading(true);
+    setError("");
+    setSuccess("");
+
+    const { data: savedRecord, error } = await supabase.rpc(
+      "record_reading",
+      {
+        p_participant_id: selectedParticipant.id,
+        p_page_to: pageTo,
+        p_note: note.trim() || null,
+      }
+    );
+
+    if (error) {
+      setError(error.message);
+      setSavingReading(false);
+      return;
+    }
+
+    const isBaseline =
+      !Array.isArray(savedRecord) && savedRecord?.is_baseline === true;
+
+    setNewPage("");
+    setNote("");
+
+    setSuccess(
+      isBaseline
+        ? "Kemajuan awal berjaya disimpan sebagai baseline dan tidak dikira untuk hari ini."
+        : "Bacaan berjaya direkodkan."
+    );
+
+    await Promise.all([
+      loadParticipants(selectedSchoolId),
+      loadRecords(selectedParticipant.id),
+    ]);
+
+    setSelectedParticipantId(selectedParticipant.id);
+    setSavingReading(false);
+  }
+
+  async function handleSelectedPhotoChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    if (!file || !selectedParticipant) {
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await uploadParticipantPhoto(selectedParticipant.id, file);
+
+      await loadParticipants(selectedSchoolId);
+      setSelectedParticipantId(selectedParticipant.id);
+
+      setSuccess("Gambar peserta berjaya dikemas kini.");
+    } catch (uploadError) {
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Gagal memuat naik gambar.";
+
+      setError(message);
+    }
+
+    event.target.value = "";
+    setUploadingPhoto(false);
+  }
+
+  if (loading) {
     return (
-      students?.filter(
-        (student) =>
-          student.class_id === classId
-      ).length ?? 0
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        Memuatkan pengisian bacaan…
+      </main>
     );
   }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
+      <header className="border-b border-white/10 bg-slate-900">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+          <div>
+            <h1 className="text-xl font-black">
+              📖 QURAN RANKING{" "}
+              <span className="text-emerald-400">LIVE</span>
+            </h1>
+            <p className="mt-1 text-xs text-slate-400">
+              PROGRAM KHATAM MURID · PPD MACHANG
+            </p>
+          </div>
 
-      {/* ================================================= */}
-      {/* HEADER / NAVIGATION */}
-      {/* ================================================= */}
-
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
-
-        <div className="max-w-7xl mx-auto px-6">
-
-          <div className="h-20 flex items-center justify-between">
-
-            {/* LOGO */}
-
+          <div className="flex gap-3">
             <Link
-              href="/guru"
-              className="flex items-center gap-3"
+              href="/dashboard"
+              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/20"
             >
-
-              <div className="w-11 h-11 rounded-2xl bg-emerald-500 flex items-center justify-center text-2xl">
-                📖
-              </div>
-
-              <div className="hidden sm:block">
-
-                <div className="font-black tracking-tight">
-                  QURAN RANKING{" "}
-                  <span className="text-emerald-400">
-                    LIVE
-                  </span>
-                </div>
-
-                <div className="text-xs text-slate-500">
-                  SK AYER MERAH
-                </div>
-
-              </div>
-
+              Dashboard
             </Link>
 
-            {/* NAVIGATION */}
-
-            <nav className="flex items-center gap-2">
-
-              {/* DASHBOARD */}
-
-              <Link
-                href="/guru"
-                className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-              >
-                🏠 Dashboard
-              </Link>
-
-              {/* RANKING - TAB BARU */}
-
-              <Link
-                href="/ranking"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-400 hover:bg-white/5 hover:text-white transition"
-              >
-                🏆 Ranking
-              </Link>
-
-              {/* TAMBAH MURID */}
-
-              <Link
-                href="/guru/tambah-murid"
-                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-400 transition"
-              >
-                <span className="hidden sm:inline">
-                  ➕ Tambah Murid
-                </span>
-
-                <span className="sm:hidden">
-                  ➕
-                </span>
-              </Link>
-
-            </nav>
-
+            <Link
+              href="/ranking"
+              className="rounded-xl bg-yellow-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-yellow-400"
+            >
+              🏆 Ranking
+            </Link>
           </div>
-
         </div>
-
       </header>
 
-      {/* ================================================= */}
-      {/* HERO */}
-      {/* ================================================= */}
+      <section className="mx-auto max-w-6xl px-6 py-10">
+        <p className="font-semibold text-emerald-400">PENGISIAN BACAAN</p>
+        <h2 className="mt-2 text-4xl font-black">
+          Rekod Bacaan Peserta
+        </h2>
+        <p className="mt-2 text-slate-400">
+          Pilih sekolah, pilih peserta, kemudian masukkan muka surat semasa.
+        </p>
 
-      <section className="max-w-7xl mx-auto px-6 pt-12">
-
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 p-8 md:p-10">
-
-          <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl" />
-
-          <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-blue-500/10 blur-3xl" />
-
-          <div className="relative">
-
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-bold text-emerald-400">
-
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-
-              SISTEM AKTIF
-
-            </div>
-
-            <p className="text-emerald-400 font-semibold mt-6">
-              ASSALAMUALAIKUM 👋
-            </p>
-
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-2">
-              Dashboard Guru
-            </h1>
-
-            <p className="max-w-2xl text-slate-400 mt-4 text-base md:text-lg">
-              Pantau perkembangan bacaan Al-Quran
-              murid SK Ayer Merah secara langsung
-              dan tersusun.
-            </p>
-
-            <div className="flex flex-wrap gap-3 mt-7">
-
-              {/* RANKING - TAB BARU */}
-
-              <Link
-                href="/ranking"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl bg-yellow-500 hover:bg-yellow-400 px-5 py-3 font-bold text-slate-950 transition"
-              >
-                🏆 Lihat Ranking Live
-              </Link>
-
-              {/* TAMBAH MURID */}
-
-              <Link
-                href="/guru/tambah-murid"
-                className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-5 py-3 font-semibold transition"
-              >
-                ➕ Tambah Murid
-              </Link>
-
-            </div>
-
+        {error && (
+          <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+            ❌ {error}
           </div>
-
-        </div>
-
-      </section>
-
-      {/* ================================================= */}
-      {/* STATISTIK */}
-      {/* ================================================= */}
-
-      <section className="max-w-7xl mx-auto px-6 mt-8">
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
-          {/* JUMLAH MURID */}
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5">
-
-            <div className="flex justify-between items-start">
-
-              <div className="w-11 h-11 rounded-2xl bg-blue-500/10 flex items-center justify-center text-2xl">
-                👨‍🎓
-              </div>
-
-              <span className="text-xs text-slate-500">
-                MURID
-              </span>
-
-            </div>
-
-            <div className="text-3xl md:text-4xl font-black mt-5">
-              {totalStudents}
-            </div>
-
-            <p className="text-sm text-slate-500 mt-1">
-              Jumlah murid
-            </p>
-
-          </div>
-
-          {/* AKTIF */}
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5">
-
-            <div className="flex justify-between items-start">
-
-              <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-2xl">
-                📖
-              </div>
-
-              <span className="text-xs text-slate-500">
-                AKTIF
-              </span>
-
-            </div>
-
-            <div className="text-3xl md:text-4xl font-black text-emerald-400 mt-5">
-              {activeStudents}
-            </div>
-
-            <p className="text-sm text-slate-500 mt-1">
-              Sudah membaca
-            </p>
-
-          </div>
-
-          {/* TAMAT */}
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5">
-
-            <div className="flex justify-between items-start">
-
-              <div className="w-11 h-11 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-2xl">
-                🏆
-              </div>
-
-              <span className="text-xs text-slate-500">
-                TAMAT
-              </span>
-
-            </div>
-
-            <div className="text-3xl md:text-4xl font-black text-yellow-400 mt-5">
-              {completedStudents}
-            </div>
-
-            <p className="text-sm text-slate-500 mt-1">
-              Mencapai 604
-            </p>
-
-          </div>
-
-          {/* KELAS */}
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5">
-
-            <div className="flex justify-between items-start">
-
-              <div className="w-11 h-11 rounded-2xl bg-purple-500/10 flex items-center justify-center text-2xl">
-                🏫
-              </div>
-
-              <span className="text-xs text-slate-500">
-                KELAS
-              </span>
-
-            </div>
-
-            <div className="text-3xl md:text-4xl font-black text-purple-400 mt-5">
-              {totalClasses}
-            </div>
-
-            <p className="text-sm text-slate-500 mt-1">
-              Kelas berdaftar
-            </p>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* ================================================= */}
-      {/* ANALISIS PRESTASI */}
-      {/* ================================================= */}
-
-      <section className="max-w-7xl mx-auto px-6 mt-8">
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-          {/* MURID TERATAS */}
-
-          <div className="rounded-3xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-slate-900 p-6">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-
-                <p className="text-xs font-bold text-yellow-400">
-                  🥇 PRESTASI TERATAS
-                </p>
-
-                <h2 className="text-2xl font-black mt-2">
-                  Murid Teratas
-                </h2>
-
-              </div>
-
-              {/* RANKING - TAB BARU */}
-
-              <Link
-                href="/ranking"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-yellow-400 hover:text-yellow-300"
-              >
-                Ranking →
-              </Link>
-
-            </div>
-
-            {topStudent ? (
-
-              <div className="flex items-center gap-5 mt-7">
-
-                <div className="w-20 h-20 rounded-3xl overflow-hidden bg-slate-800 border border-yellow-400/20 flex-shrink-0">
-
-                  {topStudent.photo_url ? (
-                    <img
-                      src={topStudent.photo_url}
-                      alt={topStudent.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl">
-                      👤
-                    </div>
-                  )}
-
-                </div>
-
-                <div className="flex-1 min-w-0">
-
-                  <p className="text-xs text-yellow-400 font-bold">
-                    RANK #1
-                  </p>
-
-                  <h3 className="text-xl font-black truncate mt-1">
-                    {topStudent.name}
-                  </h3>
-
-                  <p className="text-sm text-slate-400 mt-1">
-
-                    {getLevelIcon(
-                      getLevel(
-                        topStudent.current_page ?? 0
-                      )
-                    )}
-
-                    {" "}
-
-                    {getLevel(
-                      topStudent.current_page ?? 0
-                    )}
-
-                  </p>
-
-                </div>
-
-                <div className="text-right">
-
-                  <div className="text-3xl font-black">
-                    {topStudent.current_page ?? 0}
-                  </div>
-
-                  <div className="text-xs text-slate-500">
-                    / 604
-                  </div>
-
-                </div>
-
-              </div>
-
-            ) : (
-
-              <p className="text-slate-500 mt-6">
-                Belum ada data murid.
-              </p>
-
-            )}
-
-          </div>
-
-          {/* PURATA */}
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-
-                <p className="text-xs font-bold text-emerald-400">
-                  📊 PRESTASI KESELURUHAN
-                </p>
-
-                <h2 className="text-2xl font-black mt-2">
-                  Purata Bacaan
-                </h2>
-
-              </div>
-
-              <div className="text-3xl">
-                📖
-              </div>
-
-            </div>
-
-            <div className="flex items-end gap-2 mt-8">
-
-              <span className="text-5xl font-black">
-                {averagePage}
-              </span>
-
-              <span className="text-slate-500 mb-2">
-                / 604
-              </span>
-
-            </div>
-
-            <div className="flex justify-between text-xs mt-4">
-
-              <span className="text-slate-500">
-                Kemajuan keseluruhan
-              </span>
-
-              <span className="text-emerald-400 font-bold">
-                {averagePercentage}%
-              </span>
-
-            </div>
-
-            <div className="h-3 rounded-full bg-slate-800 overflow-hidden mt-2">
-
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                style={{
-                  width: `${averagePercentage}%`,
-                }}
-              />
-
-            </div>
-
-            <p className="text-xs text-slate-600 mt-4">
-              Jumlah keseluruhan:{" "}
-              {totalPages.toLocaleString()} muka surat
-            </p>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* ================================================= */}
-      {/* SENARAI KELAS */}
-      {/* ================================================= */}
-
-      <section className="max-w-7xl mx-auto px-6 mt-10 pb-12">
-
-        <div className="flex items-end justify-between mb-5">
-
-          <div>
-
-            <p className="text-xs font-bold text-emerald-400">
-              PENGURUSAN
-            </p>
-
-            <h2 className="text-2xl md:text-3xl font-black mt-1">
-              🏫 Kelas Anda
-            </h2>
-
-            <p className="text-sm text-slate-500 mt-1">
-              Pilih kelas untuk pengisian bacaan murid.
-            </p>
-
-          </div>
-
-          {/* RANKING - TAB BARU */}
-
-          <Link
-            href="/ranking"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:block text-sm text-emerald-400 hover:text-emerald-300"
-          >
-            🏆 Ranking Live →
-          </Link>
-
-        </div>
-
-        {classes && classes.length > 0 ? (
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-            {classes.map((item) => {
-
-              const count =
-                getClassStudentCount(item.id);
-
-              return (
-                <div
-                  key={item.id}
-                  className="group rounded-3xl border border-white/10 bg-slate-900 p-6 hover:border-emerald-400/40 hover:bg-slate-800/70 transition"
-                >
-
-                  <div className="flex items-center justify-between">
-
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-2xl">
-                      🏫
-                    </div>
-
-                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
-                      {count} murid
-                    </span>
-
-                  </div>
-
-                  <h3 className="text-xl font-black mt-6">
-                    {item.name}
-                  </h3>
-
-                  <p className="text-sm text-slate-500 mt-1">
-                    Senarai murid dan pengisian bacaan
-                  </p>
-
-                  <Link
-                    href={`/guru/kelas/${item.id}`}
-                    className="mt-6 flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 font-bold text-slate-950 transition"
-                  >
-                    📖 Buka Pengisian
-
-                    <span className="group-hover:translate-x-1 transition">
-                      →
-                    </span>
-
-                  </Link>
-
-                </div>
-              );
-            })}
-
-          </div>
-
-        ) : (
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-10 text-center">
-
-            <div className="text-5xl">
-              🏫
-            </div>
-
-            <h3 className="text-xl font-bold mt-4">
-              Tiada kelas
-            </h3>
-
-            <p className="text-slate-500 mt-2">
-              Belum ada kelas berdaftar.
-            </p>
-
-          </div>
-
         )}
 
-      </section>
+        {success && (
+          <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300">
+            ✅ {success}
+          </div>
+        )}
 
-      {/* ================================================= */}
-      {/* FOOTER */}
-      {/* ================================================= */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+            <h3 className="text-xl font-bold">1. Pilih Sekolah</h3>
 
-      <footer className="border-t border-white/10 bg-slate-900">
+            <select
+              value={selectedSchoolId}
+              onChange={(event) => {
+                setSelectedSchoolId(event.target.value);
+                setError("");
+                setSuccess("");
+              }}
+              className="mt-5 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+            >
+              {schools.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.code} · {school.name}
+                </option>
+              ))}
+            </select>
 
-        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <form onSubmit={handleAddParticipant} className="mt-8">
+              <h3 className="text-lg font-bold">Tambah Peserta</h3>
 
-          <p className="text-xs text-slate-600">
-            © 2026 QURAN RANKING LIVE · SK AYER MERAH
-          </p>
+              <p className="mt-1 text-sm text-slate-400">
+                Tambah peserta baharu bagi{" "}
+                {selectedSchool?.name ?? "sekolah ini"}.
+              </p>
 
-          <p className="text-xs text-slate-600">
-            Sistem Pemantauan Bacaan Al-Quran
-          </p>
+              <input
+                value={newParticipantName}
+                onChange={(event) => setNewParticipantName(event.target.value)}
+                placeholder="Nama penuh peserta"
+                className="mt-4 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+              />
 
+              <input
+                type="number"
+                min="0"
+                max="604"
+                value={startingPage}
+                onChange={(event) => setStartingPage(event.target.value)}
+                placeholder="Muka surat permulaan, contoh: 462"
+                className="mt-3 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+              />
+
+              <label className="mt-3 block">
+                <span className="text-sm text-slate-300">
+                  Gambar peserta (pilihan)
+                </span>
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) =>
+                    setNewParticipantPhoto(event.target.files?.[0] ?? null)
+                  }
+                  className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-emerald-400"
+                />
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Gambar akan dimampatkan automatik sebelum disimpan.
+                </p>
+              </label>
+
+              <p className="mt-3 text-xs text-slate-500">
+                Muka surat permulaan ialah kemajuan awal peserta dan tidak
+                dikira sebagai bacaan hari ini.
+              </p>
+
+              <button
+                type="submit"
+                disabled={savingParticipant}
+                className="mt-4 w-full rounded-xl bg-emerald-500 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-400"
+              >
+                {savingParticipant ? "Menyimpan…" : "➕ Tambah Peserta"}
+              </button>
+            </form>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+            <h3 className="text-xl font-bold">2. Pilih Peserta</h3>
+
+            {participants.length > 0 ? (
+              <select
+                value={selectedParticipantId}
+                onChange={(event) => {
+                  setSelectedParticipantId(event.target.value);
+                  setError("");
+                  setSuccess("");
+                }}
+                className="mt-5 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+              >
+                <option value="">— Pilih peserta —</option>
+
+                {participants.map((participant) => (
+                  <option key={participant.id} value={participant.id}>
+                    {participant.name} · {participant.current_page}/604
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="mt-5 rounded-xl bg-slate-800 p-4 text-slate-400">
+                Belum ada peserta untuk sekolah ini.
+              </p>
+            )}
+
+            {selectedParticipant && (
+              <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                <div className="flex items-center gap-4">
+                  <div className="h-20 w-20 overflow-hidden rounded-2xl border border-emerald-400/20 bg-slate-800">
+                    {selectedParticipant.photo_url ? (
+                      <img
+                        src={selectedParticipant.photo_url}
+                        alt={selectedParticipant.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-4xl">
+                        👤
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400">Peserta dipilih</p>
+                    <p className="mt-1 text-xl font-black">
+                      {selectedParticipant.name}
+                    </p>
+                    <p className="mt-2 text-emerald-400">
+                      Kemajuan semasa: {selectedParticipant.current_page} / 604
+                    </p>
+                  </div>
+                </div>
+
+                {selectedParticipant.grandmaster_at && (
+                  <p className="mt-4 font-bold text-yellow-400">
+                    👑 GRANDMASTER
+                  </p>
+                )}
+
+                <label className="mt-5 block">
+                  <span className="text-sm text-slate-300">
+                    Tukar gambar peserta
+                  </span>
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleSelectedPhotoChange}
+                    disabled={uploadingPhoto}
+                    className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-emerald-400 disabled:opacity-50"
+                  />
+
+                  <p className="mt-2 text-xs text-slate-500">
+                    {uploadingPhoto
+                      ? "Sedang memampatkan dan memuat naik gambar…"
+                      : "JPG, PNG atau WebP. Gambar akan dimampatkan automatik."}
+                  </p>
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
-      </footer>
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+            <h3 className="text-xl font-bold">3. Rekod Bacaan</h3>
 
+            <form onSubmit={handleRecordReading} className="mt-5">
+              <label className="block">
+                <span className="text-sm text-slate-300">
+                  Muka surat semasa
+                </span>
+
+                <input
+                  type="number"
+                  min="1"
+                  max="604"
+                  value={newPage}
+                  onChange={(event) => setNewPage(event.target.value)}
+                  placeholder={
+                    selectedParticipant
+                      ? `Lebih daripada ${selectedParticipant.current_page}`
+                      : "Pilih peserta dahulu"
+                  }
+                  disabled={!selectedParticipant}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+
+              <label className="mt-4 block">
+                <span className="text-sm text-slate-300">
+                  Catatan (pilihan)
+                </span>
+
+                <textarea
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="Contoh: Bacaan selepas waktu Zuhur"
+                  disabled={!selectedParticipant}
+                  className="mt-2 min-h-24 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={!selectedParticipant || savingReading}
+                className="mt-5 w-full rounded-xl bg-emerald-500 py-4 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              >
+                {savingReading ? "Merekod bacaan…" : "📖 Simpan Bacaan"}
+              </button>
+            </form>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+            <h3 className="text-xl font-bold">Bacaan Hari Ini</h3>
+
+            {selectedParticipant ? (
+              <>
+                <p className="mt-4 text-4xl font-black text-emerald-400">
+                  {todayPages}
+                </p>
+
+                <p className="text-sm text-slate-400">muka surat hari ini</p>
+
+                <div className="mt-6 space-y-3">
+                  {records.length > 0 ? (
+                    records.map((record) => (
+                      <div
+                        key={record.id}
+                        className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3"
+                      >
+                        <span className="text-sm text-slate-300">
+                          {record.page_from} → {record.page_to}
+                        </span>
+
+                        <span className="font-bold text-emerald-400">
+                          +{record.pages_read}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-500">
+                      Belum ada rekod bacaan hari ini.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="mt-5 text-slate-500">
+                Pilih peserta untuk melihat rekod hari ini.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

@@ -1,291 +1,231 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 import LogoutButton from "./LogoutButton";
 import { requireAuth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
-  // Dapatkan jumlah kelas
-  const { count: totalClasses, error: classError } =
-    await supabase
-      .from("classes")
-      .select("*", {
+  await requireAuth();
+
+  const supabase = await createClient();
+
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur",
+  });
+
+  const [schoolsResult, participantsResult, todayRecordsResult] =
+    await Promise.all([
+      supabase.from("schools").select("*", {
         count: "exact",
         head: true,
-      });
+      }),
 
-  // Dapatkan semua murid
-  const { data: students, error: studentsError } =
-    await supabase
-      .from("students")
-      .select("id, name, current_page")
-      .order("current_page", {
-        ascending: false,
-        nullsFirst: false,
-      });
+      supabase
+        .from("participants")
+        .select("id, name, current_page, grandmaster_at")
+        .order("current_page", {
+          ascending: false,
+          nullsFirst: false,
+        }),
 
-  // Jika ada ralat
-  if (classError || studentsError) {
+      supabase
+        .from("reading_records")
+        .select("pages_read")
+        .eq("reading_date", today)
+        .is("voided_at", null)
+        .eq("is_baseline", false),
+    ]);
+
+  const { count: totalSchools, error: schoolsError } = schoolsResult;
+  const { data: participants, error: participantsError } = participantsResult;
+  const { data: todayRecords, error: todayRecordsError } = todayRecordsResult;
+
+  if (schoolsError || participantsError || todayRecordsError) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white p-10">
-
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
         <h1 className="text-3xl font-bold text-red-400">
           Ralat mendapatkan data dashboard
         </h1>
 
-        {classError && (
+        {schoolsError && (
           <p className="mt-4 text-slate-300">
-            Ralat kelas: {classError.message}
+            Ralat sekolah: {schoolsError.message}
           </p>
         )}
 
-        {studentsError && (
+        {participantsError && (
           <p className="mt-2 text-slate-300">
-            Ralat murid: {studentsError.message}
+            Ralat peserta: {participantsError.message}
           </p>
         )}
 
+        {todayRecordsError && (
+          <p className="mt-2 text-slate-300">
+            Ralat bacaan hari ini: {todayRecordsError.message}
+          </p>
+        )}
       </main>
     );
   }
 
-  const totalStudents = students?.length ?? 0;
+  const totalParticipants = participants?.length ?? 0;
 
-  const totalPages =
-    students?.reduce(
-      (total, student) =>
-        total + (student.current_page ?? 0),
+  const totalOverallPages =
+    participants?.reduce(
+      (total, participant) => total + (participant.current_page ?? 0),
       0
     ) ?? 0;
 
-  const topStudent = students?.[0] ?? null;
+  const totalTodayPages =
+    todayRecords?.reduce(
+      (total, record) => total + (record.pages_read ?? 0),
+      0
+    ) ?? 0;
+
+  const topParticipant = participants?.[0] ?? null;
+
+  const totalGrandmasters =
+    participants?.filter((participant) => participant.grandmaster_at).length ??
+    0;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-
-      {/* HEADER */}
       <header className="border-b border-white/10 bg-slate-900">
-
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <div>
             <h1 className="text-xl font-black">
               📖 QURAN RANKING{" "}
-              <span className="text-emerald-400">
-                LIVE
-              </span>
+              <span className="text-emerald-400">LIVE</span>
             </h1>
 
-            <p className="text-xs text-slate-400 mt-1">
-              SK AYER MERAH
+            <p className="mt-1 text-xs text-slate-400">
+              PROGRAM KHATAM MURID · PPD MACHANG
             </p>
           </div>
 
           <LogoutButton />
-
         </div>
-
       </header>
 
-      {/* CONTENT */}
-      <section className="max-w-6xl mx-auto px-6 py-10">
-
-        {/* WELCOME */}
+      <section className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-10">
+          <p className="font-semibold text-emerald-400">ASSALAMUALAIKUM 👋</p>
 
-          <p className="text-emerald-400 font-semibold">
-            ASSALAMUALAIKUM 👋
+          <h2 className="mt-2 text-4xl font-black">Dashboard PPD Machang</h2>
+
+          <p className="mt-2 text-slate-400">
+            Ringkasan program bacaan Al-Quran semua sekolah.
           </p>
-
-          <h2 className="text-4xl font-black mt-2">
-            Dashboard Guru
-          </h2>
-
-          <p className="text-slate-400 mt-2">
-            Ringkasan Quran Ranking Live
-          </p>
-
         </div>
 
-        {/* STATISTIK */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-          {/* MURID */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
-
-            <div className="text-4xl mb-4">
-              👨‍🎓
-            </div>
-
-            <p className="text-sm text-slate-400">
-              Jumlah Murid
-            </p>
-
-            <p className="text-4xl font-black mt-1">
-              {totalStudents}
-            </p>
-
+            <div className="mb-4 text-4xl">🏫</div>
+            <p className="text-sm text-slate-400">Jumlah Sekolah</p>
+            <p className="mt-1 text-4xl font-black">{totalSchools ?? 0}</p>
           </div>
 
-          {/* KELAS */}
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
-
-            <div className="text-4xl mb-4">
-              🏫
-            </div>
-
-            <p className="text-sm text-slate-400">
-              Jumlah Kelas
-            </p>
-
-            <p className="text-4xl font-black mt-1">
-              {totalClasses ?? 0}
-            </p>
-
+            <div className="mb-4 text-4xl">👨‍🎓</div>
+            <p className="text-sm text-slate-400">Jumlah Peserta</p>
+            <p className="mt-1 text-4xl font-black">{totalParticipants}</p>
           </div>
 
-          {/* MUKA SURAT */}
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
-
-            <div className="text-4xl mb-4">
-              📖
-            </div>
-
-            <p className="text-sm text-slate-400">
-              Jumlah Muka Surat
+            <div className="mb-4 text-4xl">🔥</div>
+            <p className="text-sm text-slate-400">Bacaan Hari Ini</p>
+            <p className="mt-1 text-4xl font-black">
+              {totalTodayPages.toLocaleString()}
             </p>
-
-            <p className="text-4xl font-black mt-1">
-              {totalPages.toLocaleString()}
-            </p>
-
+            <p className="mt-1 text-sm text-emerald-400">muka surat</p>
           </div>
 
-          {/* RANKING TERATAS */}
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
+            <div className="mb-4 text-4xl">👑</div>
+            <p className="text-sm text-slate-400">Grandmaster</p>
+            <p className="mt-1 text-4xl font-black">{totalGrandmasters}</p>
+          </div>
+        </div>
 
-            <div className="text-4xl mb-4">
-              🏆
-            </div>
+        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+            <div className="text-5xl">🏆</div>
 
-            <p className="text-sm text-slate-400">
-              Ranking Teratas
-            </p>
+            <p className="mt-5 text-sm text-slate-400">Kemajuan Keseluruhan</p>
 
-            {topStudent ? (
-
+            {topParticipant ? (
               <>
-                <p className="text-lg font-black mt-2 truncate">
-                  {topStudent.name}
+                <p className="mt-2 text-2xl font-black">
+                  {topParticipant.name}
                 </p>
 
-                <p className="text-sm text-emerald-400 mt-1">
-                  {topStudent.current_page ?? 0} / 604 muka surat
+                <p className="mt-1 text-emerald-400">
+                  {topParticipant.current_page ?? 0} / 604 muka surat
                 </p>
               </>
-
             ) : (
-
-              <p className="text-slate-500 mt-2">
-                Tiada data
-              </p>
-
+              <p className="mt-2 text-slate-500">Belum ada peserta.</p>
             )}
-
           </div>
 
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
+            <div className="text-5xl">📖</div>
+
+            <p className="mt-5 text-sm text-slate-400">
+              Jumlah Kemajuan Semua Peserta
+            </p>
+
+            <p className="mt-2 text-2xl font-black">
+              {totalOverallPages.toLocaleString()} muka surat
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Daripada sasaran 604 muka surat setiap peserta.
+            </p>
+          </div>
         </div>
 
-        {/* MENU */}
         <div className="mt-12">
+          <h3 className="mb-5 text-xl font-bold">Menu Utama</h3>
 
-          <h3 className="text-xl font-bold mb-5">
-            Menu Utama
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-            {/* PENGISIAN */}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Link
               href="/guru"
-              className="group rounded-3xl border border-white/10 bg-slate-900 p-7 hover:bg-slate-800 hover:border-emerald-400/50 transition"
+              className="group rounded-3xl border border-white/10 bg-slate-900 p-7 transition hover:border-emerald-400/50 hover:bg-slate-800"
             >
+              <div className="mb-5 text-5xl">📖</div>
 
-              <div className="text-5xl mb-5">
-                📖
-              </div>
+              <h3 className="text-2xl font-bold">Pengisian Bacaan</h3>
 
-              <h3 className="text-2xl font-bold">
-                Pengisian Bacaan
-              </h3>
-
-              <p className="text-slate-400 mt-2">
-                Pilih kelas dan kemas kini bacaan
-                Al-Quran murid.
+              <p className="mt-2 text-slate-400">
+                Pilih sekolah, pilih peserta, kemudian masukkan muka surat
+                semasa.
               </p>
 
-              <div className="mt-6 text-emerald-400 font-semibold">
+              <div className="mt-6 font-semibold text-emerald-400">
                 Buka Pengisian →
               </div>
-
             </Link>
 
-            {/* RANKING */}
             <Link
               href="/ranking"
-              className="group rounded-3xl border border-white/10 bg-slate-900 p-7 hover:bg-slate-800 hover:border-yellow-400/50 transition"
+              className="group rounded-3xl border border-white/10 bg-slate-900 p-7 transition hover:border-yellow-400/50 hover:bg-slate-800"
             >
+              <div className="mb-5 text-5xl">🏆</div>
 
-              <div className="text-5xl mb-5">
-                🏆
-              </div>
+              <h3 className="text-2xl font-bold">Ranking Live</h3>
 
-              <h3 className="text-2xl font-bold">
-                Ranking Live
-              </h3>
-
-              <p className="text-slate-400 mt-2">
-                Lihat kedudukan bacaan Al-Quran
-                murid secara langsung.
+              <p className="mt-2 text-slate-400">
+                Lihat ranking bacaan harian, kemajuan keseluruhan dan
+                Grandmaster.
               </p>
 
-              <div className="mt-6 text-yellow-400 font-semibold">
+              <div className="mt-6 font-semibold text-yellow-400">
                 Lihat Ranking →
               </div>
-
             </Link>
-
           </div>
-
         </div>
-
-        {/* INFO */}
-        <div className="mt-8 rounded-3xl border border-emerald-500/10 bg-emerald-500/5 p-6">
-
-          <div className="flex gap-4">
-
-            <div className="text-3xl">
-              💡
-            </div>
-
-            <div>
-
-              <h3 className="font-bold">
-                Quran Ranking Live
-              </h3>
-
-              <p className="text-sm text-slate-400 mt-1">
-                Setiap kemas kini bacaan murid akan
-                mempengaruhi ranking secara langsung.
-              </p>
-
-            </div>
-
-          </div>
-
-        </div>
-
       </section>
-
     </main>
   );
 }
