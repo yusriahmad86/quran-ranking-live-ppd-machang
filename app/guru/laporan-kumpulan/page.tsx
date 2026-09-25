@@ -27,6 +27,7 @@ type ReadingRecord = {
   reading_date: string;
   page_from: number;
   page_to: number;
+  pages_read: number;
   entered_by: string | null;
   note: string | null;
   is_baseline: boolean;
@@ -224,7 +225,7 @@ export default function LaporanKumpulanPage() {
       const { data, error } = await supabase
         .from("reading_records")
         .select(
-          "id,participant_id,reading_date,page_from,page_to,entered_by,note,is_baseline,created_at"
+          "id,participant_id,reading_date,page_from,page_to,pages_read,entered_by,note,is_baseline,created_at"
         )
         .in(
           "participant_id",
@@ -283,17 +284,20 @@ export default function LaporanKumpulanPage() {
               ]
             : null;
 
+        /*
+         * PENTING:
+         *
+         * Gunakan pages_read.
+         *
+         * page_from dan page_to menunjukkan
+         * kedudukan muka surat, bukan jumlah
+         * bacaan pada hari tersebut.
+         */
         const pagesToday =
           normalRecords.reduce(
-            (total, record) => {
-              const pages = Math.max(
-                0,
-                (record.page_to ?? 0) -
-                  (record.page_from ?? 0)
-              );
-
-              return total + pages;
-            },
+            (total, record) =>
+              total +
+              Number(record.pages_read || 0),
             0
           );
 
@@ -329,6 +333,12 @@ export default function LaporanKumpulanPage() {
   const totalNotFilled =
     totalParticipants - totalFilled;
 
+  /*
+   * JUMLAH BACAAN HARI INI
+   *
+   * Ini ialah jumlah pages_read untuk
+   * tarikh yang dipilih.
+   */
   const totalPagesToday =
     reportRows.reduce(
       (total, row) =>
@@ -336,6 +346,13 @@ export default function LaporanKumpulanPage() {
       0
     );
 
+  /*
+   * Jumlah current_page semua murid.
+   *
+   * Ini hanya digunakan pada footer
+   * kolum Muka Surat kerana kolum tersebut
+   * menunjukkan kedudukan semasa murid.
+   */
   const totalCurrentPages =
     reportRows.reduce(
       (total, row) =>
@@ -417,21 +434,23 @@ export default function LaporanKumpulanPage() {
       {/* CONTENT */}
       {/* ===================================== */}
 
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 print:max-w-none print:px-0 print:py-0">
 
+        {/* =================================== */}
         {/* TAJUK */}
+        {/* =================================== */}
 
-        <div className="mb-8">
+        <div className="mb-8 print:mb-3">
 
-          <p className="font-semibold text-purple-400 print:text-black">
+          <p className="font-semibold text-purple-400 print:text-black print:text-[10pt]">
             LAPORAN PENGISIAN BACAAN AL-QURAN
           </p>
 
-          <h2 className="mt-2 text-3xl font-black sm:text-4xl print:text-2xl">
+          <h2 className="mt-2 text-3xl font-black sm:text-4xl print:mt-1 print:text-xl">
             Kumpulan {selectedGroup}
           </h2>
 
-          <p className="mt-2 text-sm text-slate-400 print:text-black">
+          <p className="mt-2 text-sm text-slate-400 print:mt-1 print:text-[9pt] print:text-black">
             Tarikh: {formatDate(selectedDate)}
           </p>
 
@@ -511,7 +530,7 @@ export default function LaporanKumpulanPage() {
         {/* =================================== */}
 
         {error && (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-300">
+          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-300 print:hidden">
 
             <p className="font-bold">
               Ralat
@@ -528,55 +547,63 @@ export default function LaporanKumpulanPage() {
         {/* RINGKASAN */}
         {/* =================================== */}
 
-        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4 print:mb-3 print:grid-cols-4 print:gap-2">
 
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 print:border-slate-300 print:bg-white">
+          {/* JUMLAH MURID */}
 
-            <p className="text-xs text-slate-500">
+          <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
+
+            <p className="text-xs text-slate-500 print:text-[8pt]">
               Jumlah Murid
             </p>
 
-            <p className="mt-2 text-3xl font-black print:text-black">
+            <p className="mt-2 text-3xl font-black print:mt-0.5 print:text-lg print:text-black">
               {totalParticipants}
             </p>
 
           </div>
 
-          <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5 print:border-slate-300 print:bg-white">
+          {/* SUDAH ISI */}
 
-            <p className="text-xs text-slate-500">
+          <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
+
+            <p className="text-xs text-slate-500 print:text-[8pt]">
               Sudah Isi
             </p>
 
-            <p className="mt-2 text-3xl font-black text-emerald-400 print:text-black">
+            <p className="mt-2 text-3xl font-black text-emerald-400 print:mt-0.5 print:text-lg print:text-black">
               {totalFilled}
             </p>
 
           </div>
 
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/5 p-5 print:border-slate-300 print:bg-white">
+          {/* BELUM ISI */}
 
-            <p className="text-xs text-slate-500">
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/5 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
+
+            <p className="text-xs text-slate-500 print:text-[8pt]">
               Belum Isi
             </p>
 
-            <p className="mt-2 text-3xl font-black text-red-400 print:text-black">
+            <p className="mt-2 text-3xl font-black text-red-400 print:mt-0.5 print:text-lg print:text-black">
               {totalNotFilled}
             </p>
 
           </div>
 
-          <div className="rounded-3xl border border-purple-500/20 bg-purple-500/5 p-5 print:border-slate-300 print:bg-white">
+          {/* JUMLAH BACAAN */}
 
-            <p className="text-xs text-slate-500">
+          <div className="rounded-3xl border border-purple-500/20 bg-purple-500/5 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
+
+            <p className="text-xs text-slate-500 print:text-[8pt]">
               Jumlah Bacaan
             </p>
 
-            <p className="mt-2 text-3xl font-black text-purple-400 print:text-black">
+            <p className="mt-2 text-3xl font-black text-purple-400 print:mt-0.5 print:text-lg print:text-black">
               {totalPagesToday}
             </p>
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 print:text-[7pt]">
               muka surat hari ini
             </p>
 
@@ -588,22 +615,28 @@ export default function LaporanKumpulanPage() {
         {/* INFO KEMAJUAN */}
         {/* =================================== */}
 
-        <div className="mb-8 rounded-3xl border border-white/10 bg-slate-900 p-6 print:border-slate-300 print:bg-white">
+        <div className="mb-8 rounded-3xl border border-white/10 bg-slate-900 p-6 print:mb-3 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
 
           <div className="flex flex-wrap items-center justify-between gap-4">
 
             <div>
 
-              <p className="text-sm text-slate-400 print:text-slate-600">
+              <p className="text-sm text-slate-400 print:text-[8pt] print:text-slate-600">
                 Jumlah Kemajuan Kumpulan
               </p>
 
-              <p className="mt-1 text-3xl font-black text-emerald-400 print:text-black">
-                {totalCurrentPages.toLocaleString()}
+              {/*
+               * SEKARANG menggunakan jumlah bacaan
+               * pada tarikh dipilih.
+               */}
+
+              <p className="mt-1 text-3xl font-black text-emerald-400 print:mt-0.5 print:text-lg print:text-black">
+                {totalPagesToday.toLocaleString()}
               </p>
 
-              <p className="text-xs text-slate-500">
-                muka surat keseluruhan
+              <p className="text-xs text-slate-500 print:text-[7pt]">
+                muka surat dibaca pada{" "}
+                {formatDate(selectedDate)}
               </p>
 
             </div>
@@ -626,21 +659,23 @@ export default function LaporanKumpulanPage() {
         {/* JADUAL */}
         {/* =================================== */}
 
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 print:rounded-none print:border-slate-300 print:bg-white">
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 print:overflow-visible print:rounded-none print:border-slate-300 print:bg-white">
 
+          {/* ================================= */}
           {/* HEADER CETAK */}
+          {/* ================================= */}
 
-          <div className="hidden border-b border-slate-300 p-6 text-black print:block">
+          <div className="hidden border-b border-slate-300 p-6 text-black print:block print:p-2">
 
-            <h1 className="text-center text-2xl font-black">
+            <h1 className="text-center text-2xl font-black print:text-[15pt]">
               QURAN RANKING LIVE – PPD MACHANG
             </h1>
 
-            <p className="mt-2 text-center text-lg font-bold">
+            <p className="mt-2 text-center text-lg font-bold print:mt-0.5 print:text-[11pt]">
               LAPORAN PENGISIAN BACAAN AL-QURAN
             </p>
 
-            <div className="mt-4 flex justify-between text-sm">
+            <div className="mt-4 flex justify-between text-sm print:mt-2 print:text-[8pt]">
 
               <span>
                 Kumpulan:{" "}
@@ -662,13 +697,13 @@ export default function LaporanKumpulanPage() {
 
           {loadingRecords ? (
 
-            <div className="p-10 text-center text-slate-400">
+            <div className="p-10 text-center text-slate-400 print:hidden">
               Memuatkan rekod bacaan...
             </div>
 
           ) : reportRows.length === 0 ? (
 
-            <div className="p-10 text-center">
+            <div className="p-10 text-center print:hidden">
 
               <div className="text-5xl">
                 👥
@@ -687,39 +722,57 @@ export default function LaporanKumpulanPage() {
 
           ) : (
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto print:overflow-visible">
 
-              <table className="w-full min-w-[900px] border-collapse text-sm">
+              <table className="w-full min-w-[900px] border-collapse text-sm print:min-w-0 print:w-full print:table-fixed print:text-[7.5pt]">
+
+                <colgroup>
+
+                  <col className="w-[5%]" />
+
+                  <col className="w-[26%]" />
+
+                  <col className="w-[20%]" />
+
+                  <col className="w-[12%]" />
+
+                  <col className="w-[12%]" />
+
+                  <col className="w-[15%]" />
+
+                  <col className="w-[10%]" />
+
+                </colgroup>
 
                 <thead>
 
                   <tr className="border-b border-white/10 bg-slate-800 text-left print:border-slate-300 print:bg-slate-100 print:text-black">
 
-                    <th className="px-4 py-4 text-center">
+                    <th className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
                       Bil.
                     </th>
 
-                    <th className="px-4 py-4">
+                    <th className="px-4 py-4 print:px-1.5 print:py-1.5">
                       Nama Murid
                     </th>
 
-                    <th className="px-4 py-4">
+                    <th className="px-4 py-4 print:px-1.5 print:py-1.5">
                       Sekolah
                     </th>
 
-                    <th className="px-4 py-4 text-center">
+                    <th className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
                       Muka Surat
                     </th>
 
-                    <th className="px-4 py-4 text-center">
+                    <th className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
                       Bacaan Hari Ini
                     </th>
 
-                    <th className="px-4 py-4 text-center">
+                    <th className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
                       Level
                     </th>
 
-                    <th className="px-4 py-4 text-center">
+                    <th className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
                       Status
                     </th>
 
@@ -734,16 +787,16 @@ export default function LaporanKumpulanPage() {
 
                       <tr
                         key={row.participant.id}
-                        className="border-b border-white/5 print:border-slate-300"
+                        className="border-b border-white/5 print:border-slate-300 print:break-inside-avoid"
                       >
 
-                        <td className="px-4 py-4 text-center font-bold">
+                        <td className="px-4 py-4 text-center font-bold print:px-1.5 print:py-1">
                           {row.number}
                         </td>
 
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 print:px-1.5 print:py-1">
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 print:gap-1.5">
 
                             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-800 print:hidden">
 
@@ -769,9 +822,9 @@ export default function LaporanKumpulanPage() {
 
                             </div>
 
-                            <div>
+                            <div className="min-w-0">
 
-                              <p className="font-bold">
+                              <p className="font-bold print:leading-tight">
                                 {
                                   row.participant.name
                                 }
@@ -783,20 +836,20 @@ export default function LaporanKumpulanPage() {
 
                         </td>
 
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 print:px-1.5 print:py-1 print:leading-tight">
                           {
                             row.participant.school_name
                           }
                         </td>
 
-                        <td className="px-4 py-4 text-center font-black">
+                        <td className="px-4 py-4 text-center font-black print:px-1.5 print:py-1">
                           {
                             row.participant.current_page
                           }{" "}
                           / 604
                         </td>
 
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1">
 
                           {row.hasReading ? (
 
@@ -814,7 +867,7 @@ export default function LaporanKumpulanPage() {
 
                         </td>
 
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1">
 
                           <span
                             className={`font-bold ${row.level.className} print:text-black`}
@@ -825,18 +878,18 @@ export default function LaporanKumpulanPage() {
 
                         </td>
 
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1">
 
                           {row.hasReading ? (
 
                             <span className="font-bold text-emerald-400 print:text-black">
-                              ✓ SUDAH ISI
+                              ✓ ISI
                             </span>
 
                           ) : (
 
                             <span className="font-bold text-red-400 print:text-black">
-                              ✗ BELUM ISI
+                              ✗ BELUM
                             </span>
 
                           )}
@@ -856,22 +909,22 @@ export default function LaporanKumpulanPage() {
 
                     <td
                       colSpan={3}
-                      className="px-4 py-4 text-right"
+                      className="px-4 py-4 text-right print:px-1.5 print:py-1.5"
                     >
                       JUMLAH
                     </td>
 
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
                       {totalCurrentPages}
                     </td>
 
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
                       +{totalPagesToday}
                     </td>
 
                     <td
                       colSpan={2}
-                      className="px-4 py-4 text-center"
+                      className="px-4 py-4 text-center print:px-1.5 print:py-1.5"
                     >
                       {totalFilled} /{" "}
                       {totalParticipants} ISI
@@ -891,15 +944,15 @@ export default function LaporanKumpulanPage() {
           {/* FOOTER CETAK */}
           {/* ================================= */}
 
-          <div className="hidden border-t border-slate-300 p-6 print:block">
+          <div className="hidden border-t border-slate-300 p-6 print:block print:p-2">
 
-            <div className="mt-10 grid grid-cols-2 gap-20">
+            <div className="mt-10 grid grid-cols-2 gap-20 print:mt-5">
 
               <div className="text-center">
 
-                <div className="h-12 border-b border-black" />
+                <div className="h-12 border-b border-black print:h-7" />
 
-                <p className="mt-2 text-sm">
+                <p className="mt-2 text-sm print:mt-1 print:text-[8pt]">
                   Tandatangan Guru
                 </p>
 
@@ -907,9 +960,9 @@ export default function LaporanKumpulanPage() {
 
               <div className="text-center">
 
-                <div className="h-12 border-b border-black" />
+                <div className="h-12 border-b border-black print:h-7" />
 
-                <p className="mt-2 text-sm">
+                <p className="mt-2 text-sm print:mt-1 print:text-[8pt]">
                   Tandatangan Penyelaras
                 </p>
 
@@ -917,7 +970,7 @@ export default function LaporanKumpulanPage() {
 
             </div>
 
-            <p className="mt-8 text-center text-xs text-slate-500">
+            <p className="mt-8 text-center text-xs text-slate-500 print:mt-3 print:text-[7pt]">
               QURAN RANKING LIVE – PPD MACHANG
             </p>
 
@@ -926,6 +979,79 @@ export default function LaporanKumpulanPage() {
         </div>
 
       </section>
+
+      {/* ===================================== */}
+      {/* PRINT CSS */}
+      {/* ===================================== */}
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 6mm;
+          }
+
+          html,
+          body {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: white !important;
+            color: black !important;
+          }
+
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+
+          main {
+            width: 100% !important;
+            min-height: auto !important;
+            background: white !important;
+          }
+
+          table {
+            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+          }
+
+          th,
+          td {
+            vertical-align: middle;
+          }
+
+          tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+
+          thead {
+            display: table-header-group;
+          }
+
+          tfoot {
+            display: table-footer-group;
+          }
+
+          .print\\:hidden {
+            display: none !important;
+          }
+
+          .print\\:block {
+            display: block !important;
+          }
+
+          .print\\:min-w-0 {
+            min-width: 0 !important;
+          }
+
+          .print\\:overflow-visible {
+            overflow: visible !important;
+          }
+        }
+      `}</style>
 
     </main>
   );
