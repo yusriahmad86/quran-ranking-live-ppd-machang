@@ -60,7 +60,7 @@ function ParticipantPhoto({
   name: string;
 }) {
   return (
-    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-emerald-400/20 bg-slate-800">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-emerald-400/20 bg-slate-800 sm:h-14 sm:w-14">
       {photoUrl ? (
         <img
           src={photoUrl}
@@ -70,7 +70,7 @@ function ParticipantPhoto({
           decoding="async"
         />
       ) : (
-        <span className="text-4xl">👤</span>
+        <span className="text-2xl sm:text-3xl">👤</span>
       )}
     </div>
   );
@@ -85,11 +85,11 @@ function RankingCard({
   const badge = getLevelBadge(item.current_page);
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 transition hover:border-emerald-400/30">
-      <div className="flex items-center gap-4">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 transition hover:border-emerald-400/30 sm:p-4">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {/* RANKING */}
 
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-2xl font-black text-emerald-400">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-lg font-black text-emerald-400 sm:h-11 sm:w-11 sm:text-2xl">
           {item.position}
         </span>
 
@@ -103,45 +103,46 @@ function RankingCard({
         {/* NAME + SCHOOL */}
 
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-black">
+          <h2 className="break-words text-sm font-bold sm:text-base">
             {item.participant_name}
           </h2>
 
-          <p className="mt-1 truncate text-sm text-slate-500">
+          <p className="break-words text-xs text-slate-500 sm:text-sm">
             {item.school_name}
           </p>
         </div>
 
-        {/* LEVEL */}
+        {/* LEVEL BADGE */}
 
-        <div className="hidden shrink-0 flex-col items-center sm:flex">
-          <img
-            src={badge}
-            alt={`${level} Badge`}
-            className="h-12 w-12 object-contain drop-shadow-xl"
-            loading="lazy"
-            decoding="async"
-          />
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <div className="flex flex-col items-center">
+            <img
+              src={badge}
+              alt={`${level} Badge`}
+              className="h-8 w-8 object-contain drop-shadow-xl sm:h-11 sm:w-11"
+              loading="lazy"
+              decoding="async"
+            />
 
-          <span className="mt-1 text-[9px] font-bold tracking-wide text-yellow-400">
-            {level}
-          </span>
-        </div>
+            <span className="mt-0.5 text-[7px] font-bold tracking-wide text-yellow-400 sm:mt-1 sm:text-[9px]">
+              {level}
+            </span>
+          </div>
 
-        {/* PAGE */}
+          {/* PAGE */}
 
-        <div className="shrink-0 text-right">
-          <p className="text-2xl font-black text-emerald-400">
+          <p className="whitespace-nowrap text-xs font-black text-emerald-400 sm:text-sm">
             {item.current_page}
+            <span className="text-[8px] font-normal text-slate-500 sm:text-[10px]">
+              /604
+            </span>
           </p>
-
-          <p className="text-xs text-slate-500">/604</p>
         </div>
       </div>
 
       {/* PROGRESS BAR */}
 
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800 sm:mt-3">
         <div
           className="h-full rounded-full bg-emerald-500"
           style={{
@@ -208,7 +209,7 @@ export default function OverallProgressPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-slate-950 p-6 text-white md:p-10">
+      <main className="min-h-screen bg-slate-950 p-4 text-white sm:p-6 md:p-10">
         <div className="mx-auto max-w-6xl">
           <Link
             href="/ranking"
@@ -217,11 +218,13 @@ export default function OverallProgressPage() {
             ← Kembali ke Ranking
           </Link>
 
-          <h1 className="mt-8 text-3xl font-black text-red-400">
+          <h1 className="mt-8 text-2xl font-black text-red-400 sm:text-3xl">
             Ralat mendapatkan ranking
           </h1>
 
-          <p className="mt-4 text-slate-300">{error}</p>
+          <p className="mt-4 break-words text-sm text-slate-300 sm:text-base">
+            {error}
+          </p>
         </div>
       </main>
     );
@@ -232,7 +235,7 @@ export default function OverallProgressPage() {
       {/* HEADER */}
 
       <header className="border-b border-white/10 bg-slate-900">
-        <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
           <Link
             href="/ranking"
             className="inline-flex items-center text-sm font-bold text-yellow-400 transition hover:text-yellow-300"
@@ -240,25 +243,25 @@ export default function OverallProgressPage() {
             ← Kembali ke Ranking
           </Link>
 
-          <div className="mt-8 text-center">
-            <div className="text-5xl">📖</div>
+          <div className="mt-6 text-center sm:mt-8">
+            <div className="text-4xl sm:text-5xl">📖</div>
 
-            <h1 className="mt-3 text-4xl font-black">
+            <h1 className="mt-3 text-2xl font-black sm:text-4xl">
               KEMAJUAN{" "}
               <span className="text-yellow-400">
                 KESELURUHAN
               </span>
             </h1>
 
-            <p className="mt-3 text-slate-400">
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-400 sm:text-base">
               Ranking penuh peserta berdasarkan jumlah muka
               surat yang telah dibaca.
             </p>
 
-            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2">
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+            <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-2 sm:px-4">
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-red-500 sm:h-2.5 sm:w-2.5" />
 
-              <span className="text-sm font-semibold text-red-400">
+              <span className="text-xs font-semibold text-red-400 sm:text-sm">
                 LIVE · Dikemas kini setiap 15 saat
               </span>
             </div>
@@ -268,9 +271,9 @@ export default function OverallProgressPage() {
 
       {/* CONTENT */}
 
-      <section className="mx-auto max-w-6xl px-6 py-10">
+      <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
         {participants.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {participants.map((item) => (
               <RankingCard
                 key={`${item.position}-${item.participant_name}`}
@@ -279,7 +282,7 @@ export default function OverallProgressPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-3xl border border-white/10 bg-slate-900 p-10 text-center text-slate-400">
+          <div className="rounded-2xl border border-white/10 bg-slate-900 p-6 text-center text-sm text-slate-400 sm:rounded-3xl sm:p-10 sm:text-base">
             Semua peserta aktif telah mencapai 604/604 atau
             belum ada peserta.
           </div>
@@ -289,7 +292,7 @@ export default function OverallProgressPage() {
       {/* FOOTER */}
 
       <footer className="border-t border-white/10 bg-slate-900">
-        <p className="py-6 text-center text-xs text-slate-600">
+        <p className="px-4 py-6 text-center text-xs text-slate-600">
           © 2026 QURAN RANKING LIVE · PROGRAM KHATAM MURID PPD MACHANG
         </p>
       </footer>
