@@ -150,14 +150,6 @@ export default async function DashboardPage() {
     0
   );
 
-  const totalOverallPages =
-    overall.reduce(
-      (total, participant) =>
-        total + (participant.current_page ?? 0),
-      0
-    ) +
-    grandmasters.length * 604;
-
   const totalGrandmasters = grandmasters.length;
 
   const topParticipant =
@@ -379,7 +371,7 @@ export default async function DashboardPage() {
 
           </div>
 
-          {/* JUMLAH KEMAJUAN */}
+          {/* STATUS KHATAM */}
 
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-7">
 
@@ -388,15 +380,15 @@ export default async function DashboardPage() {
             </div>
 
             <p className="mt-5 text-sm text-slate-400">
-              Jumlah Kemajuan Semua Peserta
+              Status Khatam
             </p>
 
-            <p className="mt-2 text-3xl font-black text-emerald-400">
-              {totalOverallPages.toLocaleString()}
+            <p className="mt-2 text-2xl font-black text-emerald-400">
+              Kemajuan Peserta
             </p>
 
             <p className="mt-1 text-sm text-slate-500">
-              muka surat keseluruhan
+              Ringkasan status peserta program
             </p>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
