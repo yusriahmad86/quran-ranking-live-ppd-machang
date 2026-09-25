@@ -25,8 +25,10 @@ type ReadingRecord = {
   participant_id: string;
   page_from: number;
   page_to: number;
+  pages_read: number;
   created_at: string;
   voided_at?: string | null;
+  is_baseline: boolean;
 };
 
 type StudentAnalysis = Participant & {
@@ -153,9 +155,9 @@ export default function AnalisaKeseluruhanPage() {
       setLoading(true);
       setError("");
 
-      /* ========================================= */
-      /* LOAD SEKOLAH */
-      /* ========================================= */
+      // =====================================================
+      // LOAD SEKOLAH AKTIF
+      // =====================================================
 
       const { data: schoolData, error: schoolError } =
         await supabase.rpc("get_active_schools");
@@ -174,27 +176,24 @@ export default function AnalisaKeseluruhanPage() {
 
       setSchools(activeSchools);
 
-      /* ========================================= */
-      /* LOAD SEMUA MURID AKTIF */
-      /* ========================================= */
+      // =====================================================
+      // LOAD SEMUA MURID AKTIF
+      // =====================================================
 
-      const {
-        data: participantData,
-        error: participantError,
-      } = await supabase
-        .from("participants")
-        .select(
-          "id,name,school_id,group_number,current_page,grandmaster_at,is_active"
-        )
-        .eq("is_active", true)
-        .order("name", { ascending: true });
+      const { data: participantData, error: participantError } =
+        await supabase
+          .from("participants")
+          .select(
+            "id,name,school_id,group_number,current_page,grandmaster_at,is_active"
+          )
+          .eq("is_active", true)
+          .order("name", { ascending: true });
 
       if (participantError) {
         throw new Error(participantError.message);
       }
 
-      const participants: Participant[] =
-        participantData || [];
+      const participants: Participant[] = participantData || [];
 
       if (participants.length === 0) {
         setStudents([]);
@@ -205,9 +204,16 @@ export default function AnalisaKeseluruhanPage() {
         (student) => student.id
       );
 
-      /* ========================================= */
-      /* LOAD REKOD BACAAN UNTUK TARIKH DIPILIH */
-      /* ========================================= */
+      // =====================================================
+      // LOAD REKOD BACAAN PADA TARIKH DIPILIH
+      //
+      // PENTING:
+      // - Hanya tarikh yang dipilih
+      // - Hanya rekod yang belum void
+      // - Hanya rekod bacaan sebenar
+      // - Baseline tidak dikira
+      // - pages_read digunakan sebagai jumlah bacaan
+      // =====================================================
 
       const {
         data: readingData,
@@ -215,11 +221,12 @@ export default function AnalisaKeseluruhanPage() {
       } = await supabase
         .from("reading_records")
         .select(
-          "id,participant_id,page_from,page_to,created_at,voided_at"
+          "id,participant_id,page_from,page_to,pages_read,created_at,voided_at,is_baseline"
         )
         .in("participant_id", participantIds)
         .eq("reading_date", selectedDate)
         .is("voided_at", null)
+        .eq("is_baseline", false)
         .order("created_at", {
           ascending: false,
         });
@@ -231,9 +238,9 @@ export default function AnalisaKeseluruhanPage() {
       const readings: ReadingRecord[] =
         readingData || [];
 
-      /* ========================================= */
-      /* MAP SEKOLAH */
-      /* ========================================= */
+      // =====================================================
+      // MAP SEKOLAH
+      // =====================================================
 
       const schoolMap = new Map<string, School>();
 
@@ -241,19 +248,17 @@ export default function AnalisaKeseluruhanPage() {
         schoolMap.set(school.id, school);
       });
 
-      /* ========================================= */
-      /* MAP REKOD TERKINI SETIAP MURID */
-      /* ========================================= */
+      // =====================================================
+      // REKOD TERKINI SETIAP MURID
+      // =====================================================
 
-      const readingMap =
-        new Map<string, ReadingRecord>();
+      const readingMap = new Map<
+        string,
+        ReadingRecord
+      >();
 
       readings.forEach((reading) => {
-        if (
-          !readingMap.has(
-            reading.participant_id
-          )
-        ) {
+        if (!readingMap.has(reading.participant_id)) {
           readingMap.set(
             reading.participant_id,
             reading
@@ -261,92 +266,59 @@ export default function AnalisaKeseluruhanPage() {
         }
       });
 
-      /* ========================================= */
-      /* BINA ANALISA SETIAP MURID */
-      /* ========================================= */
+      // =====================================================
+      // ANALISA SETIAP MURID
+      // =====================================================
 
       const studentResults: StudentAnalysis[] =
         participants.map((student) => {
-          const school =
-            schoolMap.get(
-              student.school_id
-            );
+          const school = schoolMap.get(
+            student.school_id
+          );
 
           const latestReading =
-            readingMap.get(
-              student.id
-            ) || null;
+            readingMap.get(student.id) || null;
 
           const studentReadings =
             readings.filter(
               (reading) =>
-                reading.participant_id ===
-                student.id
+                reading.participant_id === student.id
             );
 
-          /*
-           * JUMLAH BACAAN HARI INI
-           *
-           * Hanya rekod untuk selectedDate.
-           *
-           * Formula:
-           * page_to - page_from
-           *
-           * Jika ada beberapa rekod pada hari yang sama,
-           * semuanya akan dijumlahkan.
-           */
+          // =================================================
+          // PENTING:
+          // Gunakan pages_read.
+          //
+          // JANGAN guna:
+          // page_to - page_from
+          //
+          // kerana page_from/page_to ialah kedudukan
+          // muka surat, bukan jumlah bacaan harian.
+          // =================================================
 
           const pagesToday =
             studentReadings.reduce(
-              (total, reading) => {
-                const from =
-                  Number(
-                    reading.page_from || 0
-                  );
-
-                const to =
-                  Number(
-                    reading.page_to || 0
-                  );
-
-                const pages =
-                  Math.max(
-                    0,
-                    to - from
-                  );
-
-                return (
-                  total + pages
-                );
-              },
+              (total, reading) =>
+                total +
+                Number(reading.pages_read || 0),
               0
             );
 
-          const level =
-            getLevel(
-              Number(
-                student.current_page || 0
-              )
-            );
+          const level = getLevel(
+            Number(student.current_page || 0)
+          );
 
           return {
             ...student,
             school_name:
-              school?.name ||
-              "Tidak diketahui",
-            school_code:
-              school?.code || "",
-            pages_today:
-              pagesToday,
+              school?.name || "Tidak diketahui",
+            school_code: school?.code || "",
+            pages_today: pagesToday,
             has_read_today:
-              studentReadings.length >
-              0,
-            level:
-              level.name,
-            level_icon:
-              level.icon,
-            latest_reading:
-              latestReading,
+              studentReadings.length > 0,
+            level: level.name,
+            level_icon: level.icon,
+            latest_reading: latestReading,
           };
         });
 
@@ -363,298 +335,235 @@ export default function AnalisaKeseluruhanPage() {
     }
   }
 
-  /* ========================================= */
-  /* TAPISAN */
-  /* ========================================= */
+  // =====================================================
+  // TAPISAN
+  // =====================================================
 
-  const filteredStudents =
-    useMemo(() => {
-      return students.filter(
-        (student) => {
-          const schoolMatch =
-            selectedSchool === "ALL" ||
-            student.school_id ===
-              selectedSchool;
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      const schoolMatch =
+        selectedSchool === "ALL" ||
+        student.school_id === selectedSchool;
 
-          const levelMatch =
-            selectedLevel === "ALL" ||
-            student.level ===
-              selectedLevel;
+      const levelMatch =
+        selectedLevel === "ALL" ||
+        student.level === selectedLevel;
 
-          return (
-            schoolMatch &&
-            levelMatch
-          );
-        }
-      );
-    }, [
-      students,
-      selectedSchool,
-      selectedLevel,
-    ]);
+      return schoolMatch && levelMatch;
+    });
+  }, [
+    students,
+    selectedSchool,
+    selectedLevel,
+  ]);
 
-  /* ========================================= */
-  /* STATISTIK */
-  /* ========================================= */
+  // =====================================================
+  // STATISTIK
+  // =====================================================
 
-  const statistics =
-    useMemo(() => {
-      /*
-       * JUMLAH SEMUA MURID AKTIF
-       */
-      const total =
-        students.length;
+  const statistics = useMemo(() => {
+    // Jumlah semua murid aktif
+    const total = students.length;
 
-      /*
-       * JUMLAH MURID YANG SUDAH ISI
-       * PADA TARIKH DIPILIH
-       */
-      const filled =
-        students.filter(
-          (student) =>
-            student.has_read_today
-        ).length;
+    // Murid yang mempunyai sekurang-kurangnya
+    // satu rekod bacaan pada tarikh dipilih
+    const filled = students.filter(
+      (student) => student.has_read_today
+    ).length;
 
-      const notFilled =
-        total - filled;
+    const notFilled = total - filled;
 
-      /*
-       * JUMLAH MUKA SURAT YANG
-       * DIBACA PADA TARIKH DIPILIH SAHAJA
-       */
-      const pagesToday =
-        students.reduce(
-          (
-            totalPages,
-            student
-          ) =>
-            totalPages +
-            student.pages_today,
-          0
-        );
-
-      /*
-       * PURATA BACAAN
-       *
-       * Formula:
-       *
-       * jumlah semua muka surat
-       * pada tarikh dipilih
-       *
-       * ÷
-       *
-       * jumlah semua murid aktif
-       *
-       * BUKAN jumlah murid yang sudah isi.
-       */
-      const averagePages =
-        total > 0
-          ? pagesToday / total
-          : 0;
-
-      const grandmaster =
-        students.filter(
-          (student) =>
-            student.level ===
-            "GRANDMASTER"
-        ).length;
-
-      const heroic =
-        students.filter(
-          (student) =>
-            student.level ===
-            "HEROIC"
-        ).length;
-
-      const diamond =
-        students.filter(
-          (student) =>
-            student.level ===
-            "DIAMOND"
-        ).length;
-
-      const platinum =
-        students.filter(
-          (student) =>
-            student.level ===
-            "PLATINUM"
-        ).length;
-
-      const gold =
-        students.filter(
-          (student) =>
-            student.level ===
-            "GOLD"
-        ).length;
-
-      const silver =
-        students.filter(
-          (student) =>
-            student.level ===
-            "SILVER"
-        ).length;
-
-      const bronze =
-        students.filter(
-          (student) =>
-            student.level ===
-            "BRONZE"
-        ).length;
-
-      const completion =
-        total > 0
-          ? Math.round(
-              (filled / total) * 100
-            )
-          : 0;
-
-      return {
-        total,
-        filled,
-        notFilled,
-        pagesToday,
-        averagePages,
-        completion,
-        grandmaster,
-        heroic,
-        diamond,
-        platinum,
-        gold,
-        silver,
-        bronze,
-      };
-    }, [students]);
-
-  /* ========================================= */
-  /* ANALISA SEKOLAH */
-  /* ========================================= */
-
-  const schoolAnalysis =
-    useMemo<SchoolAnalysis[]>(
-      () => {
-        return schools
-          .map((school) => {
-            const schoolStudents =
-              students.filter(
-                (student) =>
-                  student.school_id ===
-                  school.id
-              );
-
-            const filled =
-              schoolStudents.filter(
-                (student) =>
-                  student.has_read_today
-              ).length;
-
-            const pages =
-              schoolStudents.reduce(
-                (
-                  total,
-                  student
-                ) =>
-                  total +
-                  student.pages_today,
-                0
-              );
-
-            return {
-              id: school.id,
-              name: school.name,
-              code:
-                school.code || "",
-              total:
-                schoolStudents.length,
-              filled,
-              notFilled:
-                schoolStudents.length -
-                filled,
-              pages,
-            };
-          })
-          .filter(
-            (school) =>
-              school.total > 0
-          )
-          .sort((a, b) => {
-            if (
-              b.pages !==
-              a.pages
-            ) {
-              return (
-                b.pages - a.pages
-              );
-            }
-
-            return (
-              b.filled -
-              a.filled
-            );
-          });
-      },
-      [schools, students]
+    // JUMLAH BACAAN HARI INI
+    //
+    // pages_today datang daripada pages_read
+    // bagi tarikh yang dipilih sahaja.
+    const pagesToday = students.reduce(
+      (totalPages, student) =>
+        totalPages + student.pages_today,
+      0
     );
 
-  /* ========================================= */
-  /* ANALISA LEVEL */
-  /* ========================================= */
+    // Jumlah kemajuan semasa semua murid.
+    // Ini bukan digunakan untuk Bacaan Hari Ini.
+    const totalCurrentPages = students.reduce(
+      (totalPages, student) =>
+        totalPages +
+        Number(student.current_page || 0),
+      0
+    );
+
+    // ===================================================
+    // PURATA BACAAN
+    //
+    // WAJIB bahagi dengan SEMUA murid aktif.
+    //
+    // Contoh:
+    // 950 muka surat / 100 murid = 9.5
+    //
+    // BUKAN:
+    // 950 / 95 murid yang sudah isi
+    // ===================================================
+
+    const averagePages =
+      total > 0 ? pagesToday / total : 0;
+
+    const grandmaster = students.filter(
+      (student) =>
+        student.level === "GRANDMASTER"
+    ).length;
+
+    const heroic = students.filter(
+      (student) =>
+        student.level === "HEROIC"
+    ).length;
+
+    const diamond = students.filter(
+      (student) =>
+        student.level === "DIAMOND"
+    ).length;
+
+    const platinum = students.filter(
+      (student) =>
+        student.level === "PLATINUM"
+    ).length;
+
+    const gold = students.filter(
+      (student) =>
+        student.level === "GOLD"
+    ).length;
+
+    const silver = students.filter(
+      (student) =>
+        student.level === "SILVER"
+    ).length;
+
+    const bronze = students.filter(
+      (student) =>
+        student.level === "BRONZE"
+    ).length;
+
+    const completion =
+      total > 0
+        ? Math.round((filled / total) * 100)
+        : 0;
+
+    return {
+      total,
+      filled,
+      notFilled,
+      pagesToday,
+      totalCurrentPages,
+      averagePages,
+      completion,
+      grandmaster,
+      heroic,
+      diamond,
+      platinum,
+      gold,
+      silver,
+      bronze,
+    };
+  }, [students]);
+
+  // =====================================================
+  // ANALISA SEKOLAH
+  // =====================================================
+
+  const schoolAnalysis =
+    useMemo<SchoolAnalysis[]>(() => {
+      return schools
+        .map((school) => {
+          const schoolStudents =
+            students.filter(
+              (student) =>
+                student.school_id === school.id
+            );
+
+          const filled =
+            schoolStudents.filter(
+              (student) =>
+                student.has_read_today
+            ).length;
+
+          const pages =
+            schoolStudents.reduce(
+              (total, student) =>
+                total + student.pages_today,
+              0
+            );
+
+          return {
+            id: school.id,
+            name: school.name,
+            code: school.code || "",
+            total: schoolStudents.length,
+            filled,
+            notFilled:
+              schoolStudents.length - filled,
+            pages,
+          };
+        })
+        .filter(
+          (school) => school.total > 0
+        )
+        .sort((a, b) => {
+          if (b.pages !== a.pages) {
+            return b.pages - a.pages;
+          }
+
+          return b.filled - a.filled;
+        });
+    }, [schools, students]);
+
+  // =====================================================
+  // ANALISA LEVEL
+  // =====================================================
 
   const levelAnalysis = [
     {
       name: "GRANDMASTER",
       icon: "👑",
-      count:
-        statistics.grandmaster,
+      count: statistics.grandmaster,
     },
     {
       name: "HEROIC",
       icon: "⚔️",
-      count:
-        statistics.heroic,
+      count: statistics.heroic,
     },
     {
       name: "DIAMOND",
       icon: "💎",
-      count:
-        statistics.diamond,
+      count: statistics.diamond,
     },
     {
       name: "PLATINUM",
       icon: "💠",
-      count:
-        statistics.platinum,
+      count: statistics.platinum,
     },
     {
       name: "GOLD",
       icon: "🥇",
-      count:
-        statistics.gold,
+      count: statistics.gold,
     },
     {
       name: "SILVER",
       icon: "🥈",
-      count:
-        statistics.silver,
+      count: statistics.silver,
     },
     {
       name: "BRONZE",
       icon: "🥉",
-      count:
-        statistics.bronze,
+      count: statistics.bronze,
     },
   ];
 
-  /* ========================================= */
-  /* CETAK */
-  /* ========================================= */
+  // =====================================================
+  // PRINT
+  // =====================================================
 
   function handlePrint() {
     window.print();
   }
-
-  /* ========================================= */
-  /* PAGE */
-  /* ========================================= */
 
   return (
     <>
@@ -710,9 +619,7 @@ export default function AnalisaKeseluruhanPage() {
 
               <p className="mt-2 text-sm font-bold">
                 Tarikh:{" "}
-                {formatDateMalay(
-                  selectedDate
-                )}
+                {formatDateMalay(selectedDate)}
               </p>
 
             </div>
@@ -727,7 +634,6 @@ export default function AnalisaKeseluruhanPage() {
             <div className="grid gap-4 md:grid-cols-3">
 
               {/* TARIKH */}
-
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   📅 Tarikh
@@ -735,9 +641,7 @@ export default function AnalisaKeseluruhanPage() {
 
                 <input
                   type="date"
-                  value={
-                    selectedDate
-                  }
+                  value={selectedDate}
                   onChange={(e) =>
                     setSelectedDate(
                       e.target.value
@@ -748,16 +652,13 @@ export default function AnalisaKeseluruhanPage() {
               </div>
 
               {/* SEKOLAH */}
-
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   🏫 Sekolah
                 </label>
 
                 <select
-                  value={
-                    selectedSchool
-                  }
+                  value={selectedSchool}
                   onChange={(e) =>
                     setSelectedSchool(
                       e.target.value
@@ -769,36 +670,27 @@ export default function AnalisaKeseluruhanPage() {
                     Semua Sekolah
                   </option>
 
-                  {schools.map(
-                    (school) => (
-                      <option
-                        key={
-                          school.id
-                        }
-                        value={
-                          school.id
-                        }
-                      >
-                        {school.code
-                          ? `${school.code} - ${school.name}`
-                          : school.name}
-                      </option>
-                    )
-                  )}
+                  {schools.map((school) => (
+                    <option
+                      key={school.id}
+                      value={school.id}
+                    >
+                      {school.code
+                        ? `${school.code} - ${school.name}`
+                        : school.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               {/* LEVEL */}
-
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   🏆 Level
                 </label>
 
                 <select
-                  value={
-                    selectedLevel
-                  }
+                  value={selectedLevel}
                   onChange={(e) =>
                     setSelectedLevel(
                       e.target.value
@@ -845,18 +737,14 @@ export default function AnalisaKeseluruhanPage() {
             <div className="mt-4 flex flex-wrap gap-3">
 
               <button
-                onClick={
-                  handlePrint
-                }
+                onClick={handlePrint}
                 className="rounded-xl bg-emerald-600 px-5 py-3 font-black transition hover:bg-emerald-500"
               >
                 🖨️ CETAK / SIMPAN PDF
               </button>
 
               <button
-                onClick={
-                  loadAnalysis
-                }
+                onClick={loadAnalysis}
                 className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 font-bold transition hover:bg-slate-700"
               >
                 🔄 Segarkan Data
@@ -871,43 +759,36 @@ export default function AnalisaKeseluruhanPage() {
           {/* ===================================== */}
 
           <div className="mb-4 hidden print:block">
+
             <div className="flex justify-between border-b border-black pb-2 text-sm">
 
               <span>
-                <strong>
-                  Tarikh:
-                </strong>{" "}
+                <strong>Tarikh:</strong>{" "}
                 {formatDateMalay(
                   selectedDate
                 )}
               </span>
 
               <span>
-                <strong>
-                  Sekolah:
-                </strong>{" "}
-                {selectedSchool ===
-                "ALL"
+                <strong>Sekolah:</strong>{" "}
+                {selectedSchool === "ALL"
                   ? "Semua Sekolah"
                   : schools.find(
                       (s) =>
                         s.id ===
                         selectedSchool
-                    )?.name ||
-                    "-"}
+                    )?.name || "-"}
               </span>
 
               <span>
-                <strong>
-                  Level:
-                </strong>{" "}
-                {selectedLevel ===
-                "ALL"
+                <strong>Level:</strong>{" "}
+                {selectedLevel === "ALL"
                   ? "Semua Level"
                   : selectedLevel}
               </span>
 
             </div>
+
           </div>
 
           {/* ===================================== */}
@@ -947,14 +828,13 @@ export default function AnalisaKeseluruhanPage() {
           ) : (
             <>
 
-              {/* ================================= */}
+              {/* ===================================== */}
               {/* STATISTICS */}
-              {/* ================================= */}
+              {/* ===================================== */}
 
               <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4">
 
                 {/* JUMLAH MURID */}
-
                 <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 print:border-black print:bg-white">
 
                   <div className="text-sm font-bold text-slate-400 print:text-black">
@@ -972,7 +852,6 @@ export default function AnalisaKeseluruhanPage() {
                 </div>
 
                 {/* SUDAH ISI */}
-
                 <div className="rounded-2xl border border-emerald-800 bg-emerald-950/30 p-5 print:border-black print:bg-white">
 
                   <div className="text-sm font-bold text-emerald-300 print:text-black">
@@ -984,15 +863,12 @@ export default function AnalisaKeseluruhanPage() {
                   </div>
 
                   <div className="mt-1 text-xs print:text-black">
-                    {statistics.completion}%
-                    {" "}
-                    daripada keseluruhan
+                    {statistics.completion}% daripada keseluruhan
                   </div>
 
                 </div>
 
                 {/* BACAAN HARI INI */}
-
                 <div className="rounded-2xl border border-amber-800 bg-amber-950/30 p-5 print:border-black print:bg-white">
 
                   <div className="text-sm font-bold text-amber-300 print:text-black">
@@ -1004,7 +880,7 @@ export default function AnalisaKeseluruhanPage() {
                   </div>
 
                   <div className="mt-1 text-xs print:text-black">
-                    muka surat direkodkan pada{" "}
+                    jumlah muka surat direkodkan pada{" "}
                     {formatDateMalay(
                       selectedDate
                     )}
@@ -1012,8 +888,7 @@ export default function AnalisaKeseluruhanPage() {
 
                 </div>
 
-                {/* PURATA BACAAN */}
-
+                {/* PURATA */}
                 <div className="rounded-2xl border border-blue-800 bg-blue-950/30 p-5 print:border-black print:bg-white">
 
                   <div className="text-sm font-bold text-blue-300 print:text-black">
@@ -1034,9 +909,9 @@ export default function AnalisaKeseluruhanPage() {
 
               </section>
 
-              {/* ================================= */}
+              {/* ===================================== */}
               {/* PROGRESS */}
-              {/* ================================= */}
+              {/* ===================================== */}
 
               <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 print:border-black print:bg-white">
 
@@ -1075,9 +950,9 @@ export default function AnalisaKeseluruhanPage() {
 
               </section>
 
-              {/* ================================= */}
+              {/* ===================================== */}
               {/* LEVEL ANALYSIS */}
-              {/* ================================= */}
+              {/* ===================================== */}
 
               <section className="mb-8">
 
@@ -1092,9 +967,7 @@ export default function AnalisaKeseluruhanPage() {
                   {levelAnalysis.map(
                     (level) => (
                       <div
-                        key={
-                          level.name
-                        }
+                        key={level.name}
                         className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-center print:border-black print:bg-white"
                       >
 
@@ -1122,9 +995,9 @@ export default function AnalisaKeseluruhanPage() {
 
               </section>
 
-              {/* ================================= */}
+              {/* ===================================== */}
               {/* SCHOOL ANALYSIS */}
-              {/* ================================= */}
+              {/* ===================================== */}
 
               <section className="mb-8">
 
@@ -1203,8 +1076,7 @@ export default function AnalisaKeseluruhanPage() {
                               >
 
                                 <td className="px-4 py-3">
-                                  {index +
-                                    1}
+                                  {index + 1}
                                 </td>
 
                                 <td className="px-4 py-3 font-bold">
@@ -1217,22 +1089,16 @@ export default function AnalisaKeseluruhanPage() {
                                     </span>
                                   )}
 
-                                  {
-                                    school.name
-                                  }
+                                  {school.name}
 
                                 </td>
 
                                 <td className="px-4 py-3 text-center font-bold">
-                                  {
-                                    school.total
-                                  }
+                                  {school.total}
                                 </td>
 
                                 <td className="px-4 py-3 text-center font-bold text-emerald-400 print:text-black">
-                                  {
-                                    school.filled
-                                  }
+                                  {school.filled}
                                 </td>
 
                                 <td className="px-4 py-3 text-center font-bold text-red-400 print:text-black">
@@ -1242,16 +1108,11 @@ export default function AnalisaKeseluruhanPage() {
                                 </td>
 
                                 <td className="px-4 py-3 text-center font-bold">
-                                  {
-                                    school.pages
-                                  }
+                                  {school.pages}
                                 </td>
 
                                 <td className="px-4 py-3 text-center font-black">
-                                  {
-                                    percentage
-                                  }
-                                  %
+                                  {percentage}%
                                 </td>
 
                               </tr>
@@ -1269,9 +1130,9 @@ export default function AnalisaKeseluruhanPage() {
 
               </section>
 
-              {/* ================================= */}
+              {/* ===================================== */}
               {/* STUDENT TABLE */}
-              {/* ================================= */}
+              {/* ===================================== */}
 
               <section>
 
@@ -1361,14 +1222,11 @@ export default function AnalisaKeseluruhanPage() {
                             >
 
                               <td className="px-3 py-3 text-center">
-                                {index +
-                                  1}
+                                {index + 1}
                               </td>
 
                               <td className="px-4 py-3 font-bold">
-                                {
-                                  student.name
-                                }
+                                {student.name}
                               </td>
 
                               <td className="px-4 py-3">
@@ -1446,9 +1304,7 @@ export default function AnalisaKeseluruhanPage() {
                           <tr>
 
                             <td
-                              colSpan={
-                                9
-                              }
+                              colSpan={9}
                               className="px-4 py-12 text-center text-slate-400 print:text-black"
                             >
                               Tiada murid ditemui berdasarkan tapisan yang dipilih.
@@ -1467,9 +1323,9 @@ export default function AnalisaKeseluruhanPage() {
 
               </section>
 
-              {/* ================================= */}
+              {/* ===================================== */}
               {/* PRINT FOOTER */}
-              {/* ================================= */}
+              {/* ===================================== */}
 
               <div className="mt-12 hidden print:block">
 
@@ -1532,11 +1388,11 @@ export default function AnalisaKeseluruhanPage() {
             print-color-adjust: exact;
           }
 
-          .print\\:hidden {
+          .print\\\\:hidden {
             display: none !important;
           }
 
-          .print\\:block {
+          .print\\\\:block {
             display: block !important;
           }
 
