@@ -340,6 +340,11 @@ export default function AnalisaKeseluruhanPage() {
                 student.id
             );
 
+          /*
+           * BACAAN HARI INI
+           * Hanya berdasarkan reading_records
+           * untuk tarikh yang dipilih.
+           */
           const pagesToday =
             studentReadings.reduce(
               (
@@ -463,6 +468,11 @@ export default function AnalisaKeseluruhanPage() {
       const notFilled =
         total - filled;
 
+      /*
+       * JUMLAH BACAAN HARI INI
+       * Hanya jumlah muka surat yang
+       * direkodkan pada tarikh dipilih.
+       */
       const pagesToday =
         students.reduce(
           (
@@ -474,6 +484,10 @@ export default function AnalisaKeseluruhanPage() {
           0
         );
 
+      /*
+       * KEKALKAN DATA KEMAJUAN SEMASA
+       * Untuk kegunaan bahagian lain.
+       */
       const totalCurrentPages =
         students.reduce(
           (
@@ -488,7 +502,11 @@ export default function AnalisaKeseluruhanPage() {
           0
         );
 
-      /* PURATA = JUMLAH BACAAN HARI INI / SEMUA MURID */
+      /*
+       * PURATA BACAAN
+       * Jumlah bacaan pada tarikh dipilih
+       * dibahagi SEMUA murid aktif.
+       */
       const averagePages =
         total > 0
           ? pagesToday / total
@@ -1077,7 +1095,7 @@ export default function AnalisaKeseluruhanPage() {
             {/* PROGRESS */}
             {/* ================================= */}
 
-            <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 print:mb-4 print:border-black print:bg-white print:p-2.5">
+            <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 print:mb-3 print:border-black print:bg-white print:p-2">
 
               <div className="flex items-center justify-between gap-4">
 
@@ -1087,7 +1105,7 @@ export default function AnalisaKeseluruhanPage() {
                     📊 Kadar Pengisian Bacaan
                   </h2>
 
-                  <p className="mt-1 text-xs text-slate-400 print:text-[7pt] print:text-black">
+                  <p className="mt-1 text-xs text-slate-400 print:mt-0.5 print:text-[7pt] print:text-black">
                     {statistics.filled} daripada{" "}
                     {statistics.total} murid
                     telah mengisi bacaan.
@@ -1101,7 +1119,7 @@ export default function AnalisaKeseluruhanPage() {
 
               </div>
 
-              <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-800 print:mt-2 print:h-2 print:border print:border-black">
+              <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-800 print:mt-1.5 print:h-1.5 print:border print:border-black">
 
                 <div
                   className="h-full rounded-full bg-emerald-500"
@@ -1118,39 +1136,39 @@ export default function AnalisaKeseluruhanPage() {
             {/* LEVEL ANALYSIS */}
             {/* ================================= */}
 
-            <section className="mb-8 print:mb-4">
+            <section className="mb-8 print:mb-3">
 
-              <div className="mb-4 print:mb-2">
+              <div className="mb-4 print:mb-1.5">
 
-                <h2 className="text-xl font-black print:text-[11pt]">
+                <h2 className="text-xl font-black print:text-[10pt]">
                   🏆 Analisa Mengikut Level
                 </h2>
 
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 print:grid-cols-7 print:gap-1.5">
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 print:grid-cols-7 print:gap-1">
 
                 {levelAnalysis.map(
                   (level) => (
 
                     <div
                       key={level.name}
-                      className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-center print:border-black print:bg-white print:p-1.5"
+                      className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-center print:border-black print:bg-white print:p-1"
                     >
 
-                      <div className="text-3xl print:text-lg">
+                      <div className="text-3xl print:text-base">
                         {level.icon}
                       </div>
 
-                      <div className="mt-2 text-xs font-black print:mt-0.5 print:text-[7pt]">
+                      <div className="mt-2 text-xs font-black print:mt-0 print:text-[6.5pt]">
                         {level.name}
                       </div>
 
-                      <div className="mt-1 text-2xl font-black print:mt-0.5 print:text-base">
+                      <div className="mt-1 text-2xl font-black print:mt-0 print:text-sm">
                         {level.count}
                       </div>
 
-                      <div className="text-[10px] text-slate-500 print:text-[6pt] print:text-black">
+                      <div className="text-[10px] text-slate-500 print:text-[5.5pt] print:text-black">
                         murid
                       </div>
 
@@ -1167,11 +1185,11 @@ export default function AnalisaKeseluruhanPage() {
             {/* SCHOOL ANALYSIS */}
             {/* ================================= */}
 
-            <section className="mb-8 print:mb-4">
+            <section className="mb-8 print:mb-3">
 
-              <div className="mb-4 print:mb-2">
+              <div className="mb-4 print:mb-1.5">
 
-                <h2 className="text-xl font-black print:text-[11pt]">
+                <h2 className="text-xl font-black print:text-[10pt]">
                   🏫 Analisa Mengikut Sekolah
                 </h2>
 
@@ -1181,37 +1199,37 @@ export default function AnalisaKeseluruhanPage() {
 
                 <div className="overflow-x-auto">
 
-                  <table className="w-full min-w-[700px] text-sm print:min-w-0 print:w-full print:table-fixed print:text-[7.5pt]">
+                  <table className="w-full min-w-[700px] text-sm print:min-w-0 print:w-full print:table-fixed print:text-[7pt]">
 
                     <thead>
 
                       <tr className="border-b border-slate-800 bg-slate-800 print:border-black print:bg-white">
 
-                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-left print:px-1 print:py-0.5">
                           Bil.
                         </th>
 
-                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-left print:px-1 print:py-0.5">
                           Sekolah
                         </th>
 
-                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-center print:px-1 print:py-0.5">
                           Jumlah Murid
                         </th>
 
-                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-center print:px-1 print:py-0.5">
                           Sudah Isi
                         </th>
 
-                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-center print:px-1 print:py-0.5">
                           Belum Isi
                         </th>
 
-                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-center print:px-1 print:py-0.5">
                           Muka Surat
                         </th>
 
-                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-center print:px-1 print:py-0.5">
                           %
                         </th>
 
@@ -1245,13 +1263,13 @@ export default function AnalisaKeseluruhanPage() {
                               className="border-b border-slate-800 last:border-0 print:border-black print:break-inside-avoid"
                             >
 
-                              <td className="px-4 py-3 print:px-1.5 print:py-1">
+                              <td className="px-4 py-3 text-center print:px-1 print:py-0.5">
                                 {index + 1}
                               </td>
 
-                              <td className="px-4 py-3 font-bold print:px-1.5 print:py-1">
+                              <td className="px-4 py-3 font-bold print:px-1 print:py-0.5 print:leading-tight">
                                 {school.code && (
-                                  <span className="mr-2 text-xs text-slate-500 print:mr-1 print:text-[7pt] print:text-black">
+                                  <span className="mr-2 text-xs text-slate-500 print:mr-1 print:text-[6.5pt] print:text-black">
                                     {
                                       school.code
                                     }
@@ -1263,31 +1281,31 @@ export default function AnalisaKeseluruhanPage() {
                                 }
                               </td>
 
-                              <td className="px-4 py-3 text-center font-bold print:px-1.5 print:py-1">
+                              <td className="px-4 py-3 text-center font-bold print:px-1 print:py-0.5">
                                 {
                                   school.total
                                 }
                               </td>
 
-                              <td className="px-4 py-3 text-center font-bold text-emerald-400 print:px-1.5 print:py-1 print:text-black">
+                              <td className="px-4 py-3 text-center font-bold text-emerald-400 print:px-1 print:py-0.5 print:text-black">
                                 {
                                   school.filled
                                 }
                               </td>
 
-                              <td className="px-4 py-3 text-center font-bold text-red-400 print:px-1.5 print:py-1 print:text-black">
+                              <td className="px-4 py-3 text-center font-bold text-red-400 print:px-1 print:py-0.5 print:text-black">
                                 {
                                   school.notFilled
                                 }
                               </td>
 
-                              <td className="px-4 py-3 text-center font-bold print:px-1.5 print:py-1">
+                              <td className="px-4 py-3 text-center font-bold print:px-1 print:py-0.5">
                                 {
                                   school.pages
                                 }
                               </td>
 
-                              <td className="px-4 py-3 text-center font-black print:px-1.5 print:py-1">
+                              <td className="px-4 py-3 text-center font-black print:px-1 print:py-0.5">
                                 {percentage}%
                               </td>
 
@@ -1312,15 +1330,15 @@ export default function AnalisaKeseluruhanPage() {
 
             <section>
 
-              <div className="mb-4 flex items-end justify-between gap-4 print:mb-2">
+              <div className="mb-4 flex items-end justify-between gap-4 print:mb-1.5">
 
                 <div>
 
-                  <h2 className="text-xl font-black print:text-[11pt]">
+                  <h2 className="text-xl font-black print:text-[10pt]">
                     📋 Senarai Keseluruhan Murid
                   </h2>
 
-                  <p className="mt-1 text-xs text-slate-400 print:mt-0.5 print:text-[7pt] print:text-black">
+                  <p className="mt-1 text-xs text-slate-400 print:mt-0 print:text-[6.5pt] print:text-black">
                     Memaparkan{" "}
                     {
                       filteredStudents.length
@@ -1336,45 +1354,45 @@ export default function AnalisaKeseluruhanPage() {
 
                 <div className="overflow-x-auto">
 
-                  <table className="w-full min-w-[1000px] text-sm print:min-w-0 print:w-full print:table-fixed print:text-[7.5pt]">
+                  <table className="w-full min-w-[1000px] text-sm print:min-w-0 print:w-full print:table-fixed print:text-[7pt]">
 
                     <thead>
 
                       <tr className="border-b border-slate-800 bg-slate-800 print:border-black print:bg-white">
 
-                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                        <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                           Bil.
                         </th>
 
-                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-left print:px-1 print:py-0.5">
                           Nama Murid
                         </th>
 
-                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-left print:px-1 print:py-0.5">
                           Sekolah
                         </th>
 
-                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                        <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                           Kumpulan
                         </th>
 
-                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                        <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                           Muka Surat
                         </th>
 
-                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                        <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                           Bacaan Hari Ini
                         </th>
 
-                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                        <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                           Level
                         </th>
 
-                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                        <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                           Status
                         </th>
 
-                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                        <th className="px-4 py-3 text-center print:px-1 print:py-0.5">
                           Masa Terakhir
                         </th>
 
@@ -1397,46 +1415,46 @@ export default function AnalisaKeseluruhanPage() {
                             className="border-b border-slate-800 last:border-0 print:border-black print:break-inside-avoid"
                           >
 
-                            <td className="px-3 py-3 text-center print:px-1 print:py-1">
+                            <td className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                               {
                                 index +
                                 1
                               }
                             </td>
 
-                            <td className="px-4 py-3 font-bold print:px-1.5 print:py-1 print:leading-tight">
+                            <td className="px-4 py-3 font-bold print:px-1 print:py-0.5 print:leading-tight">
                               {
                                 student.name
                               }
                             </td>
 
-                            <td className="px-4 py-3 print:px-1.5 print:py-1 print:leading-tight">
+                            <td className="px-4 py-3 print:px-1 print:py-0.5 print:leading-tight">
                               {
                                 student.school_name
                               }
                             </td>
 
-                            <td className="px-3 py-3 text-center print:px-1 print:py-1 print:leading-tight">
+                            <td className="px-3 py-3 text-center print:px-0.5 print:py-0.5 print:leading-tight">
                               Kumpulan{" "}
                               {
                                 student.group_number
                               }
                             </td>
 
-                            <td className="px-3 py-3 text-center font-black print:px-1 print:py-1">
+                            <td className="px-3 py-3 text-center font-black print:px-0.5 print:py-0.5">
                               {
                                 student.current_page
                               }
                             </td>
 
-                            <td className="px-3 py-3 text-center font-bold print:px-1 print:py-1">
+                            <td className="px-3 py-3 text-center font-bold print:px-0.5 print:py-0.5">
                               {student.pages_today >
                               0
                                 ? `+${student.pages_today}`
                                 : "-"}
                             </td>
 
-                            <td className="px-3 py-3 text-center print:px-1 print:py-1">
+                            <td className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
 
                               <span className="inline-flex items-center gap-1 font-bold print:gap-0">
                                 {
@@ -1449,7 +1467,7 @@ export default function AnalisaKeseluruhanPage() {
 
                             </td>
 
-                            <td className="px-3 py-3 text-center print:px-1 print:py-1">
+                            <td className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
 
                               {student.has_read_today ? (
                                 <span className="font-bold text-emerald-400 print:text-black">
@@ -1463,7 +1481,7 @@ export default function AnalisaKeseluruhanPage() {
 
                             </td>
 
-                            <td className="px-4 py-3 text-center text-xs text-slate-400 print:px-1.5 print:py-1 print:text-[7pt] print:text-black">
+                            <td className="px-4 py-3 text-center text-xs text-slate-400 print:px-1 print:py-0.5 print:text-[6.5pt] print:text-black">
                               {student.latest_reading
                                 ? formatDateTime(
                                     student
@@ -1508,15 +1526,15 @@ export default function AnalisaKeseluruhanPage() {
             {/* PRINT FOOTER */}
             {/* ================================= */}
 
-            <div className="mt-12 hidden print:mt-6 print:block">
+            <div className="mt-12 hidden print:mt-4 print:block">
 
               <div className="grid grid-cols-2 gap-20">
 
                 <div className="text-center">
 
-                  <div className="mb-12 border-b border-black print:mb-8" />
+                  <div className="mb-12 border-b border-black print:mb-5" />
 
-                  <div className="font-bold text-sm">
+                  <div className="font-bold text-sm print:text-[8pt]">
                     Guru / Penyelaras
                   </div>
 
@@ -1524,9 +1542,9 @@ export default function AnalisaKeseluruhanPage() {
 
                 <div className="text-center">
 
-                  <div className="mb-12 border-b border-black print:mb-8" />
+                  <div className="mb-12 border-b border-black print:mb-5" />
 
-                  <div className="font-bold text-sm">
+                  <div className="font-bold text-sm print:text-[8pt]">
                     Pegawai / Penyelaras PPD
                   </div>
 
@@ -1534,7 +1552,7 @@ export default function AnalisaKeseluruhanPage() {
 
               </div>
 
-              <div className="mt-8 text-center text-xs">
+              <div className="mt-8 text-center text-xs print:mt-3 print:text-[6.5pt]">
                 Dijana oleh Sistem QURAN RANKING LIVE – PPD MACHANG
               </div>
 
@@ -1584,40 +1602,65 @@ export default function AnalisaKeseluruhanPage() {
           }
 
           /* ================================ */
-          /* JADUAL */
+          /* JADUAL PDF */
           /* ================================ */
 
           table {
             width: 100% !important;
             table-layout: fixed !important;
             border-collapse: collapse !important;
-            page-break-inside: auto;
+            page-break-inside: auto !important;
           }
 
           thead {
-            display: table-header-group;
+            display: table-header-group !important;
           }
 
           tfoot {
-            display: table-footer-group;
+            display: table-footer-group !important;
           }
 
+          /*
+           * BARIS LEBIH RAPAT
+           * Supaya lebih banyak murid
+           * masuk dalam satu halaman A4.
+           */
           th,
           td {
-            padding-top: 3px !important;
-            padding-bottom: 3px !important;
-            line-height: 1.15 !important;
+            padding-top: 1.5px !important;
+            padding-bottom: 1.5px !important;
+            line-height: 1.05 !important;
             vertical-align: middle !important;
           }
 
+          /*
+           * Header jadual sedikit lebih padat.
+           */
+          th {
+            line-height: 1 !important;
+            font-weight: 800 !important;
+          }
+
+          /*
+           * Elakkan satu baris murid
+           * terpotong antara dua halaman.
+           */
           tr {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            page-break-after: auto;
+            page-break-after: auto !important;
+          }
+
+          /*
+           * Jadual boleh bersambung ke
+           * halaman berikutnya.
+           */
+          tbody {
+            page-break-inside: auto !important;
           }
 
           /* ================================ */
-          /* KURANGKAN JARAK ANTARA SEKSYEN */
+          /* KURANGKAN JARAK SEKSYEN */
           /* ================================ */
 
           section {
@@ -1625,11 +1668,11 @@ export default function AnalisaKeseluruhanPage() {
           }
 
           /* ================================ */
-          /* KURANGKAN FONT JADUAL */
+          /* FONT JADUAL */
           /* ================================ */
 
           table {
-            font-size: 7.5pt !important;
+            font-size: 7pt !important;
           }
 
           /* ================================ */
@@ -1640,6 +1683,17 @@ export default function AnalisaKeseluruhanPage() {
           th {
             overflow-wrap: break-word;
             word-wrap: break-word;
+          }
+
+          /* ================================ */
+          /* ELEMEN YANG TIDAK PERLU BESAR */
+          /* ================================ */
+
+          h1,
+          h2,
+          h3,
+          p {
+            page-break-after: avoid;
           }
 
         }
