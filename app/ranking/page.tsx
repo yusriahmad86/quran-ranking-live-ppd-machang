@@ -158,7 +158,9 @@ function ParticipantPhoto({
           decoding="async"
         />
       ) : (
-        <span className="text-4xl">👤</span>
+        <span className="text-4xl">
+          👤
+        </span>
       )}
     </div>
   );
@@ -444,273 +446,265 @@ export default function RankingPage() {
         </section>
 
         {/* =================================== */}
-{/* 2. KEMAJUAN KESELURUHAN */}
-{/* =================================== */}
+        {/* 2. KEMAJUAN KESELURUHAN */}
+        {/* =================================== */}
 
-<section>
+        <section>
 
-  <div className="mb-5">
+          <div className="mb-5">
 
-    <p className="font-bold text-yellow-400">
-      📖 KESELURUHAN
-    </p>
+            <p className="font-bold text-yellow-400">
+              📖 KESELURUHAN
+            </p>
 
-    <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
 
-      <div>
+              <div>
 
-        <h2 className="mt-1 text-3xl font-black">
-          Kemajuan Keseluruhan
-        </h2>
+                <h2 className="mt-1 text-3xl font-black">
+                  Kemajuan Keseluruhan
+                </h2>
 
-        <p className="mt-2 text-slate-400">
-          Kemajuan bacaan peserta berdasarkan jumlah muka surat yang telah dibaca.
-        </p>
-
-      </div>
-
-      <Link
-        href="/ranking/kemajuan"
-        className="text-sm font-bold text-yellow-400 hover:text-yellow-300"
-      >
-        Lihat Semua →
-      </Link>
-
-    </div>
-
-  </div>
-
-  {overall.length > 0 ? (
-
-    <div className="grid gap-4 md:grid-cols-2">
-
-      {/* KEDUDUKAN 1 - 5 */}
-
-      <div className="space-y-3">
-
-        {overall.slice(0, 5).map((item) => {
-
-          const level = getLevel(item.current_page);
-          const badge = getLevelBadge(item.current_page);
-
-          return (
-
-            <div
-              key={item.participant_name}
-              className="rounded-2xl border border-white/10 bg-slate-900 p-4"
-            >
-
-              {/* BARIS UTAMA */}
-
-              <div className="flex min-w-0 items-center gap-3">
-
-                {/* NOMBOR RANKING */}
-
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-2xl font-black text-emerald-400">
-                  {getMedal(item.position)}
-                </span>
-
-                {/* GAMBAR */}
-
-                <ParticipantPhoto
-                  photoUrl={item.photo_url}
-                  name={item.participant_name}
-                  sizeClass="h-14 w-14"
-                />
-
-                {/* NAMA + SEKOLAH */}
-
-                <div className="min-w-0 flex-1">
-
-                  <p className="truncate font-bold">
-                    {item.participant_name}
-                  </p>
-
-                  <p className="truncate text-sm text-slate-500">
-                    {item.school_name}
-                  </p>
-
-                </div>
-
-                {/* BADGE + PAGE */}
-
-                <div className="flex shrink-0 items-center gap-2">
-
-                  {/* BADGE LEVEL */}
-
-                  <div className="flex flex-col items-center">
-
-                    <img
-                      src={badge}
-                      alt={`${level} Badge`}
-                      className="h-10 w-10 object-contain drop-shadow-xl sm:h-11 sm:w-11"
-                    />
-
-                    <span className="mt-1 text-[8px] font-bold tracking-wide text-yellow-400 sm:text-[9px]">
-                      {level}
-                    </span>
-
-                  </div>
-
-                  {/* PAGE */}
-
-                  <p className="whitespace-nowrap text-sm font-black text-emerald-400">
-
-                    {item.current_page}
-
-                    <span className="text-[10px] font-normal text-slate-500">
-                      /604
-                    </span>
-
-                  </p>
-
-                </div>
+                <p className="mt-2 text-slate-400">
+                  Kemajuan bacaan peserta berdasarkan jumlah muka surat yang telah dibaca.
+                </p>
 
               </div>
 
-              {/* PROGRESS BAR */}
+              <Link
+                href="/ranking/kemajuan"
+                className="text-sm font-bold text-yellow-400 hover:text-yellow-300"
+              >
+                Lihat Semua →
+              </Link>
 
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+            </div>
 
-                <div
-                  className="h-full rounded-full bg-emerald-500"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (item.current_page / 604) * 100
-                    )}%`,
-                  }}
-                />
+          </div>
+
+          {overall.length > 0 ? (
+
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
+
+              {/* KEDUDUKAN 1 - 5 */}
+
+              <div className="min-w-0 space-y-3">
+
+                {overall.slice(0, 5).map((item) => {
+
+                  const level = getLevel(item.current_page);
+                  const badge = getLevelBadge(item.current_page);
+
+                  return (
+
+                    <div
+                      key={item.participant_name}
+                      className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 sm:p-4"
+                    >
+
+                      {/* BARIS UTAMA */}
+
+                      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+
+                        {/* NOMBOR RANKING */}
+
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-lg font-black text-emerald-400 sm:h-11 sm:w-11 sm:text-2xl">
+                          {getMedal(item.position)}
+                        </span>
+
+                        {/* GAMBAR */}
+
+                        <ParticipantPhoto
+                          photoUrl={item.photo_url}
+                          name={item.participant_name}
+                          sizeClass="h-11 w-11 sm:h-14 sm:w-14"
+                        />
+
+                        {/* NAMA + SEKOLAH */}
+
+                        <div className="min-w-0 flex-1">
+
+                          <p className="truncate text-sm font-bold sm:text-base">
+                            {item.participant_name}
+                          </p>
+
+                          <p className="truncate text-xs text-slate-500 sm:text-sm">
+                            {item.school_name}
+                          </p>
+
+                        </div>
+
+                        {/* BADGE + PAGE */}
+
+                        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+
+                          <div className="flex flex-col items-center">
+
+                            <img
+                              src={badge}
+                              alt={`${level} Badge`}
+                              className="h-8 w-8 object-contain drop-shadow-xl sm:h-11 sm:w-11"
+                            />
+
+                            <span className="mt-0.5 text-[7px] font-bold tracking-wide text-yellow-400 sm:mt-1 sm:text-[9px]">
+                              {level}
+                            </span>
+
+                          </div>
+
+                          <p className="whitespace-nowrap text-xs font-black text-emerald-400 sm:text-sm">
+
+                            {item.current_page}
+
+                            <span className="text-[8px] font-normal text-slate-500 sm:text-[10px]">
+                              /604
+                            </span>
+
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      {/* PROGRESS BAR */}
+
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800 sm:mt-3">
+
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (item.current_page / 604) * 100
+                            )}%`,
+                          }}
+                        />
+
+                      </div>
+
+                    </div>
+
+                  );
+
+                })}
+
+              </div>
+
+              {/* KEDUDUKAN 6 - 10 */}
+
+              <div className="min-w-0 space-y-3">
+
+                {overall.slice(5, 10).map((item) => {
+
+                  const level = getLevel(item.current_page);
+                  const badge = getLevelBadge(item.current_page);
+
+                  return (
+
+                    <div
+                      key={item.participant_name}
+                      className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 sm:p-4"
+                    >
+
+                      {/* BARIS UTAMA */}
+
+                      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+
+                        {/* NOMBOR RANKING */}
+
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-lg font-black text-emerald-400 sm:h-11 sm:w-11 sm:text-2xl">
+                          {getMedal(item.position)}
+                        </span>
+
+                        {/* GAMBAR */}
+
+                        <ParticipantPhoto
+                          photoUrl={item.photo_url}
+                          name={item.participant_name}
+                          sizeClass="h-11 w-11 sm:h-14 sm:w-14"
+                        />
+
+                        {/* NAMA + SEKOLAH */}
+
+                        <div className="min-w-0 flex-1">
+
+                          <p className="truncate text-sm font-bold sm:text-base">
+                            {item.participant_name}
+                          </p>
+
+                          <p className="truncate text-xs text-slate-500 sm:text-sm">
+                            {item.school_name}
+                          </p>
+
+                        </div>
+
+                        {/* BADGE + PAGE */}
+
+                        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+
+                          <div className="flex flex-col items-center">
+
+                            <img
+                              src={badge}
+                              alt={`${level} Badge`}
+                              className="h-8 w-8 object-contain drop-shadow-xl sm:h-11 sm:w-11"
+                            />
+
+                            <span className="mt-0.5 text-[7px] font-bold tracking-wide text-yellow-400 sm:mt-1 sm:text-[9px]">
+                              {level}
+                            </span>
+
+                          </div>
+
+                          <p className="whitespace-nowrap text-xs font-black text-emerald-400 sm:text-sm">
+
+                            {item.current_page}
+
+                            <span className="text-[8px] font-normal text-slate-500 sm:text-[10px]">
+                              /604
+                            </span>
+
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      {/* PROGRESS BAR */}
+
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800 sm:mt-3">
+
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (item.current_page / 604) * 100
+                            )}%`,
+                          }}
+                        />
+
+                      </div>
+
+                    </div>
+
+                  );
+
+                })}
 
               </div>
 
             </div>
 
-          );
+          ) : (
 
-        })}
-
-      </div>
-
-      {/* KEDUDUKAN 6 - 10 */}
-
-      <div className="space-y-3">
-
-        {overall.slice(5, 10).map((item) => {
-
-          const level = getLevel(item.current_page);
-          const badge = getLevelBadge(item.current_page);
-
-          return (
-
-            <div
-              key={item.participant_name}
-              className="rounded-2xl border border-white/10 bg-slate-900 p-4"
-            >
-
-              {/* BARIS UTAMA */}
-
-              <div className="flex min-w-0 items-center gap-3">
-
-                {/* NOMBOR RANKING */}
-
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-2xl font-black text-emerald-400">
-                  {getMedal(item.position)}
-                </span>
-
-                {/* GAMBAR */}
-
-                <ParticipantPhoto
-                  photoUrl={item.photo_url}
-                  name={item.participant_name}
-                  sizeClass="h-14 w-14"
-                />
-
-                {/* NAMA + SEKOLAH */}
-
-                <div className="min-w-0 flex-1">
-
-                  <p className="truncate font-bold">
-                    {item.participant_name}
-                  </p>
-
-                  <p className="truncate text-sm text-slate-500">
-                    {item.school_name}
-                  </p>
-
-                </div>
-
-                {/* BADGE + PAGE */}
-
-                <div className="flex shrink-0 items-center gap-2">
-
-                  {/* BADGE LEVEL */}
-
-                  <div className="flex flex-col items-center">
-
-                    <img
-                      src={badge}
-                      alt={`${level} Badge`}
-                      className="h-10 w-10 object-contain drop-shadow-xl sm:h-11 sm:w-11"
-                    />
-
-                    <span className="mt-1 text-[8px] font-bold tracking-wide text-yellow-400 sm:text-[9px]">
-                      {level}
-                    </span>
-
-                  </div>
-
-                  {/* PAGE */}
-
-                  <p className="whitespace-nowrap text-sm font-black text-emerald-400">
-
-                    {item.current_page}
-
-                    <span className="text-[10px] font-normal text-slate-500">
-                      /604
-                    </span>
-
-                  </p>
-
-                </div>
-
-              </div>
-
-              {/* PROGRESS BAR */}
-
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
-
-                <div
-                  className="h-full rounded-full bg-emerald-500"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (item.current_page / 604) * 100
-                    )}%`,
-                  }}
-                />
-
-              </div>
-
+            <div className="rounded-3xl border border-white/10 bg-slate-900 p-8 text-slate-400">
+              Semua peserta aktif telah mencapai 604/604 atau belum ada peserta.
             </div>
 
-          );
+          )}
 
-        })}
-
-      </div>
-
-    </div>
-
-  ) : (
-
-    <div className="rounded-3xl border border-white/10 bg-slate-900 p-8 text-slate-400">
-      Semua peserta aktif telah mencapai 604/604 atau belum ada peserta.
-    </div>
-
-  )}
-
-</section>
+        </section>
 
         {/* =================================== */}
         {/* 3. RANKING PURATA SEKOLAH */}
@@ -835,8 +829,6 @@ export default function RankingPage() {
                   className="rounded-3xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-slate-900 p-6 text-center"
                 >
 
-                  {/* GAMBAR PESERTA + BADGE */}
-
                   <div className="relative mx-auto w-fit">
 
                     <ParticipantPhoto
@@ -844,8 +836,6 @@ export default function RankingPage() {
                       name={item.participant_name}
                       sizeClass="h-28 w-28"
                     />
-
-                    {/* BADGE GRANDMASTER */}
 
                     <img
                       src="/grandmaster-logo.png"
@@ -863,19 +853,13 @@ export default function RankingPage() {
 
                   </div>
 
-                  {/* NAMA */}
-
                   <h3 className="mt-5 text-xl font-black">
                     {item.participant_name}
                   </h3>
 
-                  {/* SEKOLAH */}
-
                   <p className="mt-1 text-sm text-slate-400">
                     {item.school_name}
                   </p>
-
-                  {/* TARIKH KHATAM */}
 
                   <p className="mt-4 text-xs font-bold uppercase tracking-wide text-yellow-400">
                     Khatam pada:
