@@ -268,6 +268,7 @@ export default function RankingPage() {
   if (error) {
     return (
       <main className="min-h-screen bg-slate-950 p-10 text-white">
+
         <h1 className="text-3xl font-bold text-red-400">
           Ralat mendapatkan ranking
         </h1>
@@ -275,6 +276,7 @@ export default function RankingPage() {
         <p className="mt-4 text-slate-300">
           {error}
         </p>
+
       </main>
     );
   }
@@ -315,10 +317,13 @@ export default function RankingPage() {
           </div>
 
           <h1 className="mt-3 text-4xl font-black">
+
             QURAN RANKING{" "}
+
             <span className="text-emerald-400">
               LIVE
             </span>
+
           </h1>
 
           <p className="mt-4 font-bold tracking-wide text-yellow-400">
@@ -340,9 +345,11 @@ export default function RankingPage() {
           </div>
 
           {rankings?.date && (
+
             <p className="mt-4 text-sm text-slate-400">
               📅 {formatDate(rankings.date)}
             </p>
+
           )}
 
         </div>
@@ -353,7 +360,7 @@ export default function RankingPage() {
       {/* MAIN CONTENT */}
       {/* ===================================== */}
 
-      <section className="mx-auto max-w-6xl space-y-10 px-6 py-10">
+      <section className="mx-auto max-w-6xl space-y-10 px-4 py-8 sm:px-6 sm:py-10">
 
         {/* =================================== */}
         {/* 1. TOP READER HARI INI */}
@@ -367,11 +374,11 @@ export default function RankingPage() {
               🔥 HARI INI
             </p>
 
-            <h2 className="mt-1 text-3xl font-black">
+            <h2 className="mt-1 text-2xl font-black sm:text-3xl">
               Top Reader Hari Ini
             </h2>
 
-            <p className="mt-2 text-slate-400">
+            <p className="mt-2 text-sm text-slate-400 sm:text-base">
               Peserta dengan jumlah muka surat tertinggi hari ini.
             </p>
 
@@ -390,30 +397,36 @@ export default function RankingPage() {
 
           {individual.length > 0 ? (
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
 
               {individual.slice(0, 10).map((item) => (
 
                 <div
                   key={`${item.position}-${item.participant_name}`}
-                  className="rounded-3xl border border-white/10 bg-slate-900 p-6"
+                  className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 sm:rounded-3xl sm:p-6"
                 >
 
-                  <div className="flex items-start justify-between gap-4">
+                  {/* TOP ROW */}
+
+                  <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+
+                    {/* FOTO */}
 
                     <ParticipantPhoto
                       photoUrl={item.photo_url}
                       name={item.participant_name}
-                      sizeClass="h-24 w-24"
+                      sizeClass="h-16 w-16 sm:h-24 sm:w-24"
                     />
 
-                    <div className="text-right">
+                    {/* RANKING + JUMLAH */}
 
-                      <span className="text-3xl">
+                    <div className="flex min-w-0 flex-1 flex-col items-end">
+
+                      <span className="text-2xl font-black text-emerald-400 sm:text-3xl">
                         {getMedal(item.position)}
                       </span>
 
-                      <p className="mt-3 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+                      <p className="mt-2 whitespace-nowrap rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 sm:px-3 sm:text-xs">
                         {item.pages_today} muka surat
                       </p>
 
@@ -421,11 +434,15 @@ export default function RankingPage() {
 
                   </div>
 
-                  <h3 className="mt-6 text-xl font-black">
+                  {/* NAME */}
+
+                  <h3 className="mt-4 break-words text-base font-black leading-snug sm:mt-6 sm:text-xl">
                     {item.participant_name}
                   </h3>
 
-                  <p className="mt-1 text-sm text-slate-400">
+                  {/* SCHOOL */}
+
+                  <p className="mt-1 break-words text-xs leading-relaxed text-slate-400 sm:text-sm">
                     {item.school_name}
                   </p>
 
@@ -461,12 +478,12 @@ export default function RankingPage() {
 
               <div>
 
-                <h2 className="mt-1 text-3xl font-black">
+                <h2 className="mt-1 text-2xl font-black sm:text-3xl">
                   Kemajuan Keseluruhan
                 </h2>
 
-                <p className="mt-2 text-slate-400">
-                  Kemajuan bacaan peserta berdasarkan jumlah muka surat yang telah dibaca.
+                <p className="mt-2 text-sm text-slate-400 sm:text-base">
+                  Kemajuan bacaan 10 peserta teratas berdasarkan jumlah muka surat yang telah dibaca.
                 </p>
 
               </div>
@@ -502,8 +519,6 @@ export default function RankingPage() {
                       className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 sm:p-4"
                     >
 
-                      {/* BARIS UTAMA */}
-
                       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
 
                         {/* NOMBOR RANKING */}
@@ -524,11 +539,11 @@ export default function RankingPage() {
 
                         <div className="min-w-0 flex-1">
 
-                          <p className="truncate text-sm font-bold sm:text-base">
+                          <p className="break-words text-sm font-bold sm:text-base">
                             {item.participant_name}
                           </p>
 
-                          <p className="truncate text-xs text-slate-500 sm:text-sm">
+                          <p className="break-words text-xs text-slate-500 sm:text-sm">
                             {item.school_name}
                           </p>
 
@@ -606,8 +621,6 @@ export default function RankingPage() {
                       className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 sm:p-4"
                     >
 
-                      {/* BARIS UTAMA */}
-
                       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
 
                         {/* NOMBOR RANKING */}
@@ -628,11 +641,11 @@ export default function RankingPage() {
 
                         <div className="min-w-0 flex-1">
 
-                          <p className="truncate text-sm font-bold sm:text-base">
+                          <p className="break-words text-sm font-bold sm:text-base">
                             {item.participant_name}
                           </p>
 
-                          <p className="truncate text-xs text-slate-500 sm:text-sm">
+                          <p className="break-words text-xs text-slate-500 sm:text-sm">
                             {item.school_name}
                           </p>
 
@@ -722,12 +735,12 @@ export default function RankingPage() {
 
               <div>
 
-                <h2 className="mt-1 text-3xl font-black">
+                <h2 className="mt-1 text-2xl font-black sm:text-3xl">
                   Ranking Purata Sekolah Hari Ini
                 </h2>
 
-                <p className="mt-2 text-slate-400">
-                  Purata bacaan harian bagi setiap peserta aktif sekolah.
+                <p className="mt-2 text-sm text-slate-400 sm:text-base">
+                  Purata bacaan harian bagi setiap peserta aktif 5 sekolah teratas.
                 </p>
 
               </div>
@@ -812,8 +825,8 @@ export default function RankingPage() {
               👑 PENCAPAIAN
             </p>
 
-            <h2 className="mt-1 text-3xl font-black">
-              Grandmaster
+            <h2 className="mt-1 text-2xl font-black sm:text-3xl">
+              Grandmaster (Khatam Al-Quran)
             </h2>
 
           </div>
@@ -853,11 +866,11 @@ export default function RankingPage() {
 
                   </div>
 
-                  <h3 className="mt-5 text-xl font-black">
+                  <h3 className="mt-5 break-words text-xl font-black">
                     {item.participant_name}
                   </h3>
 
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 break-words text-sm text-slate-400">
                     {item.school_name}
                   </p>
 
