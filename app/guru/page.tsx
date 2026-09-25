@@ -267,7 +267,13 @@ export default function GuruPage() {
     const image =
       await createImageBitmap(file);
 
-    const maxDimension = 1600;
+    // ===================================================
+    // COMPRESSION GAMBAR
+    // Maksimum 800px + sasaran 250KB
+    // ===================================================
+
+    const maxDimension = 800;
+    const targetSize = 250 * 1024;
 
     const scale = Math.min(
       1,
@@ -311,6 +317,12 @@ export default function GuruPage() {
       );
     }
 
+    context.imageSmoothingEnabled =
+      true;
+
+    context.imageSmoothingQuality =
+      "high";
+
     context.drawImage(
       image,
       0,
@@ -338,8 +350,7 @@ export default function GuruPage() {
 
       if (
         blob &&
-        blob.size <=
-          700 * 1024
+        blob.size <= targetSize
       ) {
         break;
       }
