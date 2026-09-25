@@ -285,14 +285,12 @@ export default function LaporanKumpulanPage() {
             : null;
 
         /*
-         * PENTING:
-         *
          * Gunakan pages_read.
          *
-         * page_from dan page_to menunjukkan
-         * kedudukan muka surat, bukan jumlah
-         * bacaan pada hari tersebut.
+         * page_from dan page_to ialah kedudukan
+         * muka surat, bukan jumlah bacaan harian.
          */
+
         const pagesToday =
           normalRecords.reduce(
             (total, record) =>
@@ -334,11 +332,9 @@ export default function LaporanKumpulanPage() {
     totalParticipants - totalFilled;
 
   /*
-   * JUMLAH BACAAN HARI INI
-   *
-   * Ini ialah jumlah pages_read untuk
-   * tarikh yang dipilih.
+   * Jumlah bacaan pada tarikh yang dipilih.
    */
+
   const totalPagesToday =
     reportRows.reduce(
       (total, row) =>
@@ -349,10 +345,10 @@ export default function LaporanKumpulanPage() {
   /*
    * Jumlah current_page semua murid.
    *
-   * Ini hanya digunakan pada footer
-   * kolum Muka Surat kerana kolum tersebut
-   * menunjukkan kedudukan semasa murid.
+   * Digunakan untuk kolum Muka Surat
+   * dan jumlah kedudukan semasa.
    */
+
   const totalCurrentPages =
     reportRows.reduce(
       (total, row) =>
@@ -464,8 +460,6 @@ export default function LaporanKumpulanPage() {
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
 
-            {/* KUMPULAN */}
-
             <div>
 
               <label className="mb-2 block text-sm font-bold text-slate-300">
@@ -499,8 +493,6 @@ export default function LaporanKumpulanPage() {
               </select>
 
             </div>
-
-            {/* TARIKH */}
 
             <div>
 
@@ -549,8 +541,6 @@ export default function LaporanKumpulanPage() {
 
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4 print:mb-3 print:grid-cols-4 print:gap-2">
 
-          {/* JUMLAH MURID */}
-
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
 
             <p className="text-xs text-slate-500 print:text-[8pt]">
@@ -562,8 +552,6 @@ export default function LaporanKumpulanPage() {
             </p>
 
           </div>
-
-          {/* SUDAH ISI */}
 
           <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
 
@@ -577,8 +565,6 @@ export default function LaporanKumpulanPage() {
 
           </div>
 
-          {/* BELUM ISI */}
-
           <div className="rounded-3xl border border-red-500/20 bg-red-500/5 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
 
             <p className="text-xs text-slate-500 print:text-[8pt]">
@@ -590,8 +576,6 @@ export default function LaporanKumpulanPage() {
             </p>
 
           </div>
-
-          {/* JUMLAH BACAAN */}
 
           <div className="rounded-3xl border border-purple-500/20 bg-purple-500/5 p-5 print:rounded-lg print:border-slate-300 print:bg-white print:p-2.5">
 
@@ -625,11 +609,6 @@ export default function LaporanKumpulanPage() {
                 Jumlah Kemajuan Kumpulan
               </p>
 
-              {/*
-               * SEKARANG menggunakan jumlah bacaan
-               * pada tarikh dipilih.
-               */}
-
               <p className="mt-1 text-3xl font-black text-emerald-400 print:mt-0.5 print:text-lg print:text-black">
                 {totalPagesToday.toLocaleString()}
               </p>
@@ -661,9 +640,7 @@ export default function LaporanKumpulanPage() {
 
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 print:overflow-visible print:rounded-none print:border-slate-300 print:bg-white">
 
-          {/* ================================= */}
           {/* HEADER CETAK */}
-          {/* ================================= */}
 
           <div className="hidden border-b border-slate-300 p-6 text-black print:block print:p-2">
 
@@ -729,17 +706,11 @@ export default function LaporanKumpulanPage() {
                 <colgroup>
 
                   <col className="w-[5%]" />
-
                   <col className="w-[26%]" />
-
                   <col className="w-[20%]" />
-
                   <col className="w-[12%]" />
-
                   <col className="w-[12%]" />
-
                   <col className="w-[15%]" />
-
                   <col className="w-[10%]" />
 
                 </colgroup>
@@ -787,14 +758,14 @@ export default function LaporanKumpulanPage() {
 
                       <tr
                         key={row.participant.id}
-                        className="border-b border-white/5 print:border-slate-300 print:break-inside-avoid"
+                        className="border-b border-white/5 text-white print:border-slate-300 print:break-inside-avoid print:text-black"
                       >
 
-                        <td className="px-4 py-4 text-center font-bold print:px-1.5 print:py-1">
+                        <td className="px-4 py-4 text-center font-bold print:px-1.5 print:py-1 print:text-black">
                           {row.number}
                         </td>
 
-                        <td className="px-4 py-4 print:px-1.5 print:py-1">
+                        <td className="px-4 py-4 print:px-1.5 print:py-1 print:text-black">
 
                           <div className="flex items-center gap-3 print:gap-1.5">
 
@@ -824,7 +795,7 @@ export default function LaporanKumpulanPage() {
 
                             <div className="min-w-0">
 
-                              <p className="font-bold print:leading-tight">
+                              <p className="font-bold print:leading-tight print:text-black">
                                 {
                                   row.participant.name
                                 }
@@ -836,20 +807,20 @@ export default function LaporanKumpulanPage() {
 
                         </td>
 
-                        <td className="px-4 py-4 print:px-1.5 print:py-1 print:leading-tight">
+                        <td className="px-4 py-4 print:px-1.5 print:py-1 print:leading-tight print:text-black">
                           {
                             row.participant.school_name
                           }
                         </td>
 
-                        <td className="px-4 py-4 text-center font-black print:px-1.5 print:py-1">
+                        <td className="px-4 py-4 text-center font-black print:px-1.5 print:py-1 print:text-black">
                           {
                             row.participant.current_page
                           }{" "}
                           / 604
                         </td>
 
-                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1">
+                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1 print:text-black">
 
                           {row.hasReading ? (
 
@@ -859,7 +830,7 @@ export default function LaporanKumpulanPage() {
 
                           ) : (
 
-                            <span className="text-slate-500">
+                            <span className="text-slate-500 print:text-black">
                               —
                             </span>
 
@@ -867,7 +838,7 @@ export default function LaporanKumpulanPage() {
 
                         </td>
 
-                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1">
+                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1 print:text-black">
 
                           <span
                             className={`font-bold ${row.level.className} print:text-black`}
@@ -878,7 +849,7 @@ export default function LaporanKumpulanPage() {
 
                         </td>
 
-                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1">
+                        <td className="px-4 py-4 text-center print:px-1.5 print:py-1 print:text-black">
 
                           {row.hasReading ? (
 
@@ -905,26 +876,26 @@ export default function LaporanKumpulanPage() {
 
                 <tfoot>
 
-                  <tr className="border-t-2 border-white/20 bg-slate-800 font-black print:border-slate-400 print:bg-slate-100">
+                  <tr className="border-t-2 border-white/20 bg-slate-800 font-black print:border-slate-400 print:bg-slate-100 print:text-black">
 
                     <td
                       colSpan={3}
-                      className="px-4 py-4 text-right print:px-1.5 print:py-1.5"
+                      className="px-4 py-4 text-right print:px-1.5 print:py-1.5 print:text-black"
                     >
                       JUMLAH
                     </td>
 
-                    <td className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
+                    <td className="px-4 py-4 text-center print:px-1.5 print:py-1.5 print:text-black">
                       {totalCurrentPages}
                     </td>
 
-                    <td className="px-4 py-4 text-center print:px-1.5 print:py-1.5">
+                    <td className="px-4 py-4 text-center print:px-1.5 print:py-1.5 print:text-black">
                       +{totalPagesToday}
                     </td>
 
                     <td
                       colSpan={2}
-                      className="px-4 py-4 text-center print:px-1.5 print:py-1.5"
+                      className="px-4 py-4 text-center print:px-1.5 print:py-1.5 print:text-black"
                     >
                       {totalFilled} /{" "}
                       {totalParticipants} ISI
@@ -940,9 +911,7 @@ export default function LaporanKumpulanPage() {
 
           )}
 
-          {/* ================================= */}
           {/* FOOTER CETAK */}
-          {/* ================================= */}
 
           <div className="hidden border-t border-slate-300 p-6 print:block print:p-2">
 
@@ -952,7 +921,7 @@ export default function LaporanKumpulanPage() {
 
                 <div className="h-12 border-b border-black print:h-7" />
 
-                <p className="mt-2 text-sm print:mt-1 print:text-[8pt]">
+                <p className="mt-2 text-sm print:mt-1 print:text-[8pt] print:text-black">
                   Tandatangan Guru
                 </p>
 
@@ -962,7 +931,7 @@ export default function LaporanKumpulanPage() {
 
                 <div className="h-12 border-b border-black print:h-7" />
 
-                <p className="mt-2 text-sm print:mt-1 print:text-[8pt]">
+                <p className="mt-2 text-sm print:mt-1 print:text-[8pt] print:text-black">
                   Tandatangan Penyelaras
                 </p>
 
@@ -970,7 +939,7 @@ export default function LaporanKumpulanPage() {
 
             </div>
 
-            <p className="mt-8 text-center text-xs text-slate-500 print:mt-3 print:text-[7pt]">
+            <p className="mt-8 text-center text-xs text-slate-500 print:mt-3 print:text-[7pt] print:text-black">
               QURAN RANKING LIVE – PPD MACHANG
             </p>
 
@@ -1009,12 +978,41 @@ export default function LaporanKumpulanPage() {
             width: 100% !important;
             min-height: auto !important;
             background: white !important;
+            color: black !important;
           }
 
           table {
             width: 100% !important;
             table-layout: fixed !important;
             border-collapse: collapse !important;
+            color: #000 !important;
+          }
+
+          /*
+           * PENTING:
+           * Paksa SEMUA teks dalam jadual
+           * menjadi hitam ketika PDF.
+           *
+           * Ini mengatasi text-white yang
+           * diwarisi daripada dark mode.
+           */
+
+          table tbody,
+          table tbody tr,
+          table tbody td,
+          table tbody td div,
+          table tbody td p,
+          table tbody td span,
+          table tfoot,
+          table tfoot tr,
+          table tfoot td {
+            color: #000 !important;
+          }
+
+          table thead,
+          table thead tr,
+          table thead th {
+            color: #000 !important;
           }
 
           th,
