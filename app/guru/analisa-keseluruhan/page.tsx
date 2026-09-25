@@ -25,10 +25,8 @@ type ReadingRecord = {
   participant_id: string;
   page_from: number;
   page_to: number;
-  pages_read: number;
   created_at: string;
   voided_at?: string | null;
-  is_baseline: boolean;
 };
 
 type StudentAnalysis = Participant & {
@@ -53,6 +51,10 @@ type SchoolAnalysis = {
 
 const MALAYSIA_TZ = "Asia/Kuala_Lumpur";
 
+/* ========================================= */
+/* TARIKH MALAYSIA */
+/* ========================================= */
+
 function getMalaysiaDate() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: MALAYSIA_TZ,
@@ -61,6 +63,10 @@ function getMalaysiaDate() {
     day: "2-digit",
   }).format(new Date());
 }
+
+/* ========================================= */
+/* LEVEL */
+/* ========================================= */
 
 function getLevel(page: number) {
   if (page >= 604) {
@@ -111,6 +117,10 @@ function getLevel(page: number) {
   };
 }
 
+/* ========================================= */
+/* FORMAT TARIKH */
+/* ========================================= */
+
 function formatDateMalay(dateString: string) {
   if (!dateString) return "-";
 
@@ -122,6 +132,10 @@ function formatDateMalay(dateString: string) {
     year: "numeric",
   }).format(date);
 }
+
+/* ========================================= */
+/* FORMAT TARIKH / MASA */
+/* ========================================= */
 
 function formatDateTime(dateString: string) {
   if (!dateString) return "-";
@@ -135,19 +149,35 @@ function formatDateTime(dateString: string) {
   }).format(new Date(dateString));
 }
 
+/* ========================================= */
+/* MAIN PAGE */
+/* ========================================= */
+
 export default function AnalisaKeseluruhanPage() {
   const [schools, setSchools] = useState<School[]>([]);
   const [students, setStudents] = useState<StudentAnalysis[]>([]);
 
-  const [selectedDate, setSelectedDate] = useState(getMalaysiaDate());
-  const [selectedSchool, setSelectedSchool] = useState("ALL");
-  const [selectedLevel, setSelectedLevel] = useState("ALL");
+  const [selectedDate, setSelectedDate] =
+    useState(getMalaysiaDate());
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [selectedSchool, setSelectedSchool] =
+    useState("ALL");
+
+  const [selectedLevel, setSelectedLevel] =
+    useState("ALL");
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  /* ========================================= */
+  /* LOAD DATA */
+  /* ========================================= */
 
   useEffect(() => {
-    void loadAnalysis();
+    loadAnalysis();
   }, [selectedDate]);
 
   async function loadAnalysis() {
@@ -155,65 +185,73 @@ export default function AnalisaKeseluruhanPage() {
       setLoading(true);
       setError("");
 
-      // =====================================================
-      // LOAD SEKOLAH AKTIF
-      // =====================================================
+      /* =============================== */
+      /* SEKOLAH */
+      /* =============================== */
 
-      const { data: schoolData, error: schoolError } =
-        await supabase.rpc("get_active_schools");
+      const {
+        data: schoolData,
+        error: schoolError,
+      } = await supabase.rpc(
+        "get_active_schools"
+      );
 
       if (schoolError) {
-        throw new Error(schoolError.message);
+        throw new Error(
+          schoolError.message
+        );
       }
 
-      const activeSchools: School[] = (schoolData || []).map(
-        (school: any) => ({
-          id: school.id,
-          name: school.name,
-          code: school.code || "",
-        })
-      );
+      const activeSchools: School[] =
+        (schoolData || []).map(
+          (school: any) => ({
+            id: school.id,
+            name: school.name,
+            code: school.code || "",
+          })
+        );
 
       setSchools(activeSchools);
 
-      // =====================================================
-      // LOAD SEMUA MURID AKTIF
-      // =====================================================
+      /* =============================== */
+      /* PESERTA */
+      /* =============================== */
 
-      const { data: participantData, error: participantError } =
-        await supabase
-          .from("participants")
-          .select(
-            "id,name,school_id,group_number,current_page,grandmaster_at,is_active"
-          )
-          .eq("is_active", true)
-          .order("name", { ascending: true });
+      const {
+        data: participantData,
+        error: participantError,
+      } = await supabase
+        .from("participants")
+        .select(
+          "id,name,school_id,group_number,current_page,grandmaster_at,is_active"
+        )
+        .eq("is_active", true)
+        .order("name", {
+          ascending: true,
+        });
 
       if (participantError) {
-        throw new Error(participantError.message);
+        throw new Error(
+          participantError.message
+        );
       }
 
-      const participants: Participant[] = participantData || [];
+      const participants: Participant[] =
+        participantData || [];
 
       if (participants.length === 0) {
         setStudents([]);
         return;
       }
 
-      const participantIds = participants.map(
-        (student) => student.id
-      );
+      const participantIds =
+        participants.map(
+          (student) => student.id
+        );
 
-      // =====================================================
-      // LOAD REKOD BACAAN PADA TARIKH DIPILIH
-      //
-      // PENTING:
-      // - Hanya tarikh yang dipilih
-      // - Hanya rekod yang belum void
-      // - Hanya rekod bacaan sebenar
-      // - Baseline tidak dikira
-      // - pages_read digunakan sebagai jumlah bacaan
-      // =====================================================
+      /* =============================== */
+      /* REKOD BACAAN HARI DIPILIH */
+      /* =============================== */
 
       const {
         data: readingData,
@@ -221,44 +259,57 @@ export default function AnalisaKeseluruhanPage() {
       } = await supabase
         .from("reading_records")
         .select(
-          "id,participant_id,page_from,page_to,pages_read,created_at,voided_at,is_baseline"
+          "id,participant_id,page_from,page_to,created_at,voided_at"
         )
-        .in("participant_id", participantIds)
-        .eq("reading_date", selectedDate)
+        .in(
+          "participant_id",
+          participantIds
+        )
+        .eq(
+          "reading_date",
+          selectedDate
+        )
         .is("voided_at", null)
-        .eq("is_baseline", false)
         .order("created_at", {
           ascending: false,
         });
 
       if (readingError) {
-        throw new Error(readingError.message);
+        throw new Error(
+          readingError.message
+        );
       }
 
       const readings: ReadingRecord[] =
         readingData || [];
 
-      // =====================================================
-      // MAP SEKOLAH
-      // =====================================================
+      /* =============================== */
+      /* SCHOOL MAP */
+      /* =============================== */
 
-      const schoolMap = new Map<string, School>();
+      const schoolMap =
+        new Map<string, School>();
 
       activeSchools.forEach((school) => {
-        schoolMap.set(school.id, school);
+        schoolMap.set(
+          school.id,
+          school
+        );
       });
 
-      // =====================================================
-      // REKOD TERKINI SETIAP MURID
-      // =====================================================
+      /* =============================== */
+      /* READING MAP */
+      /* =============================== */
 
-      const readingMap = new Map<
-        string,
-        ReadingRecord
-      >();
+      const readingMap =
+        new Map<string, ReadingRecord>();
 
       readings.forEach((reading) => {
-        if (!readingMap.has(reading.participant_id)) {
+        if (
+          !readingMap.has(
+            reading.participant_id
+          )
+        ) {
           readingMap.set(
             reading.participant_id,
             reading
@@ -266,63 +317,92 @@ export default function AnalisaKeseluruhanPage() {
         }
       });
 
-      // =====================================================
-      // ANALISA SETIAP MURID
-      // =====================================================
+      /* =============================== */
+      /* BENTUK DATA PESERTA */
+      /* =============================== */
 
       const studentResults: StudentAnalysis[] =
         participants.map((student) => {
-          const school = schoolMap.get(
-            student.school_id
-          );
+          const school =
+            schoolMap.get(
+              student.school_id
+            );
 
           const latestReading =
-            readingMap.get(student.id) || null;
+            readingMap.get(
+              student.id
+            ) || null;
 
           const studentReadings =
             readings.filter(
               (reading) =>
-                reading.participant_id === student.id
+                reading.participant_id ===
+                student.id
             );
-
-          // =================================================
-          // PENTING:
-          // Gunakan pages_read.
-          //
-          // JANGAN guna:
-          // page_to - page_from
-          //
-          // kerana page_from/page_to ialah kedudukan
-          // muka surat, bukan jumlah bacaan harian.
-          // =================================================
 
           const pagesToday =
             studentReadings.reduce(
-              (total, reading) =>
-                total +
-                Number(reading.pages_read || 0),
+              (
+                total,
+                reading
+              ) => {
+                const from = Number(
+                  reading.page_from || 0
+                );
+
+                const to = Number(
+                  reading.page_to || 0
+                );
+
+                const pages =
+                  Math.max(
+                    0,
+                    to - from
+                  );
+
+                return (
+                  total + pages
+                );
+              },
               0
             );
 
           const level = getLevel(
-            Number(student.current_page || 0)
+            Number(
+              student.current_page || 0
+            )
           );
 
           return {
             ...student,
+
             school_name:
-              school?.name || "Tidak diketahui",
-            school_code: school?.code || "",
-            pages_today: pagesToday,
+              school?.name ||
+              "Tidak diketahui",
+
+            school_code:
+              school?.code || "",
+
+            pages_today:
+              pagesToday,
+
             has_read_today:
               studentReadings.length > 0,
-            level: level.name,
-            level_icon: level.icon,
-            latest_reading: latestReading,
+
+            level:
+              level.name,
+
+            level_icon:
+              level.icon,
+
+            latest_reading:
+              latestReading,
           };
         });
 
-      setStudents(studentResults);
+      setStudents(
+        studentResults
+      );
     } catch (err: any) {
       console.error(err);
 
@@ -335,235 +415,310 @@ export default function AnalisaKeseluruhanPage() {
     }
   }
 
-  // =====================================================
-  // TAPISAN
-  // =====================================================
+  /* ========================================= */
+  /* FILTER PESERTA */
+  /* ========================================= */
 
-  const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
-      const schoolMatch =
-        selectedSchool === "ALL" ||
-        student.school_id === selectedSchool;
+  const filteredStudents =
+    useMemo(() => {
+      return students.filter(
+        (student) => {
+          const schoolMatch =
+            selectedSchool === "ALL" ||
+            student.school_id ===
+              selectedSchool;
 
-      const levelMatch =
-        selectedLevel === "ALL" ||
-        student.level === selectedLevel;
+          const levelMatch =
+            selectedLevel === "ALL" ||
+            student.level ===
+              selectedLevel;
 
-      return schoolMatch && levelMatch;
-    });
-  }, [
-    students,
-    selectedSchool,
-    selectedLevel,
-  ]);
+          return (
+            schoolMatch &&
+            levelMatch
+          );
+        }
+      );
+    }, [
+      students,
+      selectedSchool,
+      selectedLevel,
+    ]);
 
-  // =====================================================
-  // STATISTIK
-  // =====================================================
+  /* ========================================= */
+  /* STATISTIK */
+  /* ========================================= */
 
-  const statistics = useMemo(() => {
-    // Jumlah semua murid aktif
-    const total = students.length;
+  const statistics =
+    useMemo(() => {
+      const total =
+        students.length;
 
-    // Murid yang mempunyai sekurang-kurangnya
-    // satu rekod bacaan pada tarikh dipilih
-    const filled = students.filter(
-      (student) => student.has_read_today
-    ).length;
+      const filled =
+        students.filter(
+          (student) =>
+            student.has_read_today
+        ).length;
 
-    const notFilled = total - filled;
+      const notFilled =
+        total - filled;
 
-    // JUMLAH BACAAN HARI INI
-    //
-    // pages_today datang daripada pages_read
-    // bagi tarikh yang dipilih sahaja.
-    const pagesToday = students.reduce(
-      (totalPages, student) =>
-        totalPages + student.pages_today,
-      0
-    );
+      const pagesToday =
+        students.reduce(
+          (
+            totalPages,
+            student
+          ) =>
+            totalPages +
+            student.pages_today,
+          0
+        );
 
-    // Jumlah kemajuan semasa semua murid.
-    // Ini bukan digunakan untuk Bacaan Hari Ini.
-    const totalCurrentPages = students.reduce(
-      (totalPages, student) =>
-        totalPages +
-        Number(student.current_page || 0),
-      0
-    );
+      const totalCurrentPages =
+        students.reduce(
+          (
+            totalPages,
+            student
+          ) =>
+            totalPages +
+            Number(
+              student.current_page ||
+                0
+            ),
+          0
+        );
 
-    // ===================================================
-    // PURATA BACAAN
-    //
-    // WAJIB bahagi dengan SEMUA murid aktif.
-    //
-    // Contoh:
-    // 950 muka surat / 100 murid = 9.5
-    //
-    // BUKAN:
-    // 950 / 95 murid yang sudah isi
-    // ===================================================
+      /* PURATA = JUMLAH BACAAN HARI INI / SEMUA MURID */
+      const averagePages =
+        total > 0
+          ? pagesToday / total
+          : 0;
 
-    const averagePages =
-      total > 0 ? pagesToday / total : 0;
+      const grandmaster =
+        students.filter(
+          (student) =>
+            student.level ===
+            "GRANDMASTER"
+        ).length;
 
-    const grandmaster = students.filter(
-      (student) =>
-        student.level === "GRANDMASTER"
-    ).length;
+      const heroic =
+        students.filter(
+          (student) =>
+            student.level ===
+            "HEROIC"
+        ).length;
 
-    const heroic = students.filter(
-      (student) =>
-        student.level === "HEROIC"
-    ).length;
+      const diamond =
+        students.filter(
+          (student) =>
+            student.level ===
+            "DIAMOND"
+        ).length;
 
-    const diamond = students.filter(
-      (student) =>
-        student.level === "DIAMOND"
-    ).length;
+      const platinum =
+        students.filter(
+          (student) =>
+            student.level ===
+            "PLATINUM"
+        ).length;
 
-    const platinum = students.filter(
-      (student) =>
-        student.level === "PLATINUM"
-    ).length;
+      const gold =
+        students.filter(
+          (student) =>
+            student.level ===
+            "GOLD"
+        ).length;
 
-    const gold = students.filter(
-      (student) =>
-        student.level === "GOLD"
-    ).length;
+      const silver =
+        students.filter(
+          (student) =>
+            student.level ===
+            "SILVER"
+        ).length;
 
-    const silver = students.filter(
-      (student) =>
-        student.level === "SILVER"
-    ).length;
+      const bronze =
+        students.filter(
+          (student) =>
+            student.level ===
+            "BRONZE"
+        ).length;
 
-    const bronze = students.filter(
-      (student) =>
-        student.level === "BRONZE"
-    ).length;
+      const completion =
+        total > 0
+          ? Math.round(
+              (filled / total) *
+                100
+            )
+          : 0;
 
-    const completion =
-      total > 0
-        ? Math.round((filled / total) * 100)
-        : 0;
+      return {
+        total,
+        filled,
+        notFilled,
+        pagesToday,
+        totalCurrentPages,
+        averagePages,
+        completion,
+        grandmaster,
+        heroic,
+        diamond,
+        platinum,
+        gold,
+        silver,
+        bronze,
+      };
+    }, [students]);
 
-    return {
-      total,
-      filled,
-      notFilled,
-      pagesToday,
-      totalCurrentPages,
-      averagePages,
-      completion,
-      grandmaster,
-      heroic,
-      diamond,
-      platinum,
-      gold,
-      silver,
-      bronze,
-    };
-  }, [students]);
-
-  // =====================================================
-  // ANALISA SEKOLAH
-  // =====================================================
+  /* ========================================= */
+  /* ANALISA SEKOLAH */
+  /* ========================================= */
 
   const schoolAnalysis =
-    useMemo<SchoolAnalysis[]>(() => {
-      return schools
-        .map((school) => {
-          const schoolStudents =
-            students.filter(
-              (student) =>
-                student.school_id === school.id
+    useMemo<SchoolAnalysis[]>(
+      () => {
+        return schools
+          .map((school) => {
+            const schoolStudents =
+              students.filter(
+                (student) =>
+                  student.school_id ===
+                  school.id
+              );
+
+            const filled =
+              schoolStudents.filter(
+                (student) =>
+                  student.has_read_today
+              ).length;
+
+            const pages =
+              schoolStudents.reduce(
+                (
+                  total,
+                  student
+                ) =>
+                  total +
+                  student.pages_today,
+                0
+              );
+
+            return {
+              id: school.id,
+              name: school.name,
+              code: school.code || "",
+              total:
+                schoolStudents.length,
+              filled,
+              notFilled:
+                schoolStudents.length -
+                filled,
+              pages,
+            };
+          })
+          .filter(
+            (school) =>
+              school.total > 0
+          )
+          .sort((a, b) => {
+            if (
+              b.pages !== a.pages
+            ) {
+              return (
+                b.pages - a.pages
+              );
+            }
+
+            return (
+              b.filled -
+              a.filled
             );
+          });
+      },
+      [schools, students]
+    );
 
-          const filled =
-            schoolStudents.filter(
-              (student) =>
-                student.has_read_today
-            ).length;
-
-          const pages =
-            schoolStudents.reduce(
-              (total, student) =>
-                total + student.pages_today,
-              0
-            );
-
-          return {
-            id: school.id,
-            name: school.name,
-            code: school.code || "",
-            total: schoolStudents.length,
-            filled,
-            notFilled:
-              schoolStudents.length - filled,
-            pages,
-          };
-        })
-        .filter(
-          (school) => school.total > 0
-        )
-        .sort((a, b) => {
-          if (b.pages !== a.pages) {
-            return b.pages - a.pages;
-          }
-
-          return b.filled - a.filled;
-        });
-    }, [schools, students]);
-
-  // =====================================================
-  // ANALISA LEVEL
-  // =====================================================
+  /* ========================================= */
+  /* ANALISA LEVEL */
+  /* ========================================= */
 
   const levelAnalysis = [
     {
       name: "GRANDMASTER",
       icon: "👑",
-      count: statistics.grandmaster,
+      count:
+        statistics.grandmaster,
     },
     {
       name: "HEROIC",
       icon: "⚔️",
-      count: statistics.heroic,
+      count:
+        statistics.heroic,
     },
     {
       name: "DIAMOND",
       icon: "💎",
-      count: statistics.diamond,
+      count:
+        statistics.diamond,
     },
     {
       name: "PLATINUM",
       icon: "💠",
-      count: statistics.platinum,
+      count:
+        statistics.platinum,
     },
     {
       name: "GOLD",
       icon: "🥇",
-      count: statistics.gold,
+      count:
+        statistics.gold,
     },
     {
       name: "SILVER",
       icon: "🥈",
-      count: statistics.silver,
+      count:
+        statistics.silver,
     },
     {
       name: "BRONZE",
       icon: "🥉",
-      count: statistics.bronze,
+      count:
+        statistics.bronze,
     },
   ];
 
-  // =====================================================
-  // PRINT
-  // =====================================================
+  /* ========================================= */
+  /* PRINT */
+  /* ========================================= */
 
   function handlePrint() {
     window.print();
   }
+
+  /* ========================================= */
+  /* LOADING */
+  /* ========================================= */
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white">
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="text-4xl">
+              ⏳
+            </div>
+
+            <p className="mt-3 font-bold">
+              Sedang menyediakan analisa...
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* ========================================= */
+  /* PAGE */
+  /* ========================================= */
 
   return (
     <>
@@ -596,13 +751,18 @@ export default function AnalisaKeseluruhanPage() {
           </div>
         </header>
 
+        {/* ===================================== */}
+        {/* MAIN */}
+        {/* ===================================== */}
+
         <main className="mx-auto max-w-7xl px-4 py-6">
 
-          {/* ===================================== */}
+          {/* ================================= */}
           {/* PRINT HEADER */}
-          {/* ===================================== */}
+          {/* ================================= */}
 
           <div className="mb-6 hidden print:block">
+
             <div className="border-b-2 border-black pb-4 text-center">
 
               <h1 className="text-2xl font-black">
@@ -619,22 +779,27 @@ export default function AnalisaKeseluruhanPage() {
 
               <p className="mt-2 text-sm font-bold">
                 Tarikh:{" "}
-                {formatDateMalay(selectedDate)}
+                {formatDateMalay(
+                  selectedDate
+                )}
               </p>
 
             </div>
+
           </div>
 
-          {/* ===================================== */}
+          {/* ================================= */}
           {/* FILTER */}
-          {/* ===================================== */}
+          {/* ================================= */}
 
           <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-xl print:hidden">
 
             <div className="grid gap-4 md:grid-cols-3">
 
               {/* TARIKH */}
+
               <div>
+
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   📅 Tarikh
                 </label>
@@ -649,10 +814,13 @@ export default function AnalisaKeseluruhanPage() {
                   }
                   className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-500"
                 />
+
               </div>
 
               {/* SEKOLAH */}
+
               <div>
+
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   🏫 Sekolah
                 </label>
@@ -666,25 +834,32 @@ export default function AnalisaKeseluruhanPage() {
                   }
                   className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-500"
                 >
+
                   <option value="ALL">
                     Semua Sekolah
                   </option>
 
-                  {schools.map((school) => (
-                    <option
-                      key={school.id}
-                      value={school.id}
-                    >
-                      {school.code
-                        ? `${school.code} - ${school.name}`
-                        : school.name}
-                    </option>
-                  ))}
+                  {schools.map(
+                    (school) => (
+                      <option
+                        key={school.id}
+                        value={school.id}
+                      >
+                        {school.code
+                          ? `${school.code} - ${school.name}`
+                          : school.name}
+                      </option>
+                    )
+                  )}
+
                 </select>
+
               </div>
 
               {/* LEVEL */}
+
               <div>
+
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   🏆 Level
                 </label>
@@ -698,6 +873,7 @@ export default function AnalisaKeseluruhanPage() {
                   }
                   className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-500"
                 >
+
                   <option value="ALL">
                     Semua Level
                   </option>
@@ -729,7 +905,9 @@ export default function AnalisaKeseluruhanPage() {
                   <option value="BRONZE">
                     🥉 BRONZE
                   </option>
+
                 </select>
+
               </div>
 
             </div>
@@ -754,9 +932,9 @@ export default function AnalisaKeseluruhanPage() {
 
           </section>
 
-          {/* ===================================== */}
+          {/* ================================= */}
           {/* PRINT FILTER INFO */}
-          {/* ===================================== */}
+          {/* ================================= */}
 
           <div className="mb-4 hidden print:block">
 
@@ -791,13 +969,12 @@ export default function AnalisaKeseluruhanPage() {
 
           </div>
 
-          {/* ===================================== */}
+          {/* ================================= */}
           {/* ERROR */}
-          {/* ===================================== */}
+          {/* ================================= */}
 
           {error && (
             <div className="mb-6 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
-
               <div className="font-bold">
                 ❌ Ralat
               </div>
@@ -805,562 +982,565 @@ export default function AnalisaKeseluruhanPage() {
               <div className="mt-1 text-sm">
                 {error}
               </div>
-
             </div>
           )}
 
-          {/* ===================================== */}
-          {/* LOADING */}
-          {/* ===================================== */}
+          {/* ================================= */}
+          {/* CONTENT */}
+          {/* ================================= */}
 
-          {loading ? (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-12 text-center">
+          <>
 
-              <div className="text-4xl">
-                ⏳
+            {/* ================================= */}
+            {/* STATISTICS */}
+            {/* ================================= */}
+
+            <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 print:gap-2">
+
+              {/* JUMLAH MURID */}
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 print:border-black print:bg-white print:p-2.5">
+
+                <div className="text-sm font-bold text-slate-400 print:text-black print:text-[8pt]">
+                  👥 Jumlah Murid
+                </div>
+
+                <div className="mt-2 text-4xl font-black print:mt-1 print:text-2xl">
+                  {statistics.total}
+                </div>
+
+                <div className="mt-1 text-xs text-slate-500 print:text-[7pt] print:text-black">
+                  Murid aktif
+                </div>
+
               </div>
 
-              <p className="mt-3 font-bold">
-                Sedang menyediakan analisa...
-              </p>
+              {/* SUDAH ISI */}
 
-            </div>
-          ) : (
-            <>
+              <div className="rounded-2xl border border-emerald-800 bg-emerald-950/30 p-5 print:border-black print:bg-white print:p-2.5">
 
-              {/* ===================================== */}
-              {/* STATISTICS */}
-              {/* ===================================== */}
-
-              <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4">
-
-                {/* JUMLAH MURID */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 print:border-black print:bg-white">
-
-                  <div className="text-sm font-bold text-slate-400 print:text-black">
-                    👥 Jumlah Murid
-                  </div>
-
-                  <div className="mt-2 text-4xl font-black">
-                    {statistics.total}
-                  </div>
-
-                  <div className="mt-1 text-xs text-slate-500 print:text-black">
-                    Murid aktif
-                  </div>
-
+                <div className="text-sm font-bold text-emerald-300 print:text-black print:text-[8pt]">
+                  ✅ Sudah Isi
                 </div>
 
-                {/* SUDAH ISI */}
-                <div className="rounded-2xl border border-emerald-800 bg-emerald-950/30 p-5 print:border-black print:bg-white">
-
-                  <div className="text-sm font-bold text-emerald-300 print:text-black">
-                    ✅ Sudah Isi
-                  </div>
-
-                  <div className="mt-2 text-4xl font-black text-emerald-400 print:text-black">
-                    {statistics.filled}
-                  </div>
-
-                  <div className="mt-1 text-xs print:text-black">
-                    {statistics.completion}% daripada keseluruhan
-                  </div>
-
+                <div className="mt-2 text-4xl font-black text-emerald-400 print:mt-1 print:text-2xl print:text-black">
+                  {statistics.filled}
                 </div>
 
-                {/* BACAAN HARI INI */}
-                <div className="rounded-2xl border border-amber-800 bg-amber-950/30 p-5 print:border-black print:bg-white">
-
-                  <div className="text-sm font-bold text-amber-300 print:text-black">
-                    📖 Bacaan Hari Ini
-                  </div>
-
-                  <div className="mt-2 text-4xl font-black text-amber-400 print:text-black">
-                    {statistics.pagesToday}
-                  </div>
-
-                  <div className="mt-1 text-xs print:text-black">
-                    jumlah muka surat direkodkan pada{" "}
-                    {formatDateMalay(
-                      selectedDate
-                    )}
-                  </div>
-
+                <div className="mt-1 text-xs print:text-[7pt] print:text-black">
+                  {statistics.completion}% daripada keseluruhan
                 </div>
 
-                {/* PURATA */}
-                <div className="rounded-2xl border border-blue-800 bg-blue-950/30 p-5 print:border-black print:bg-white">
+              </div>
 
-                  <div className="text-sm font-bold text-blue-300 print:text-black">
-                    📈 Purata Bacaan
-                  </div>
+              {/* BACAAN HARI INI */}
 
-                  <div className="mt-2 text-4xl font-black text-blue-400 print:text-black">
-                    {statistics.averagePages.toFixed(
-                      1
-                    )}
-                  </div>
+              <div className="rounded-2xl border border-amber-800 bg-amber-950/30 p-5 print:border-black print:bg-white print:p-2.5">
 
-                  <div className="mt-1 text-xs print:text-black">
-                    muka surat / semua murid
-                  </div>
-
+                <div className="text-sm font-bold text-amber-300 print:text-black print:text-[8pt]">
+                  📖 Bacaan Hari Ini
                 </div>
 
-              </section>
-
-              {/* ===================================== */}
-              {/* PROGRESS */}
-              {/* ===================================== */}
-
-              <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 print:border-black print:bg-white">
-
-                <div className="flex items-center justify-between gap-4">
-
-                  <div>
-
-                    <h2 className="font-black">
-                      📊 Kadar Pengisian Bacaan
-                    </h2>
-
-                    <p className="mt-1 text-xs text-slate-400 print:text-black">
-                      {statistics.filled} daripada{" "}
-                      {statistics.total} murid
-                      telah mengisi bacaan.
-                    </p>
-
-                  </div>
-
-                  <div className="text-2xl font-black">
-                    {statistics.completion}%
-                  </div>
-
+                <div className="mt-2 text-4xl font-black text-amber-400 print:mt-1 print:text-2xl print:text-black">
+                  {statistics.pagesToday}
                 </div>
 
-                <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-800 print:border print:border-black">
-
-                  <div
-                    className="h-full rounded-full bg-emerald-500"
-                    style={{
-                      width: `${statistics.completion}%`,
-                    }}
-                  />
-
+                <div className="mt-1 text-xs print:text-[7pt] print:text-black">
+                  jumlah muka surat
                 </div>
 
-              </section>
+              </div>
 
-              {/* ===================================== */}
-              {/* LEVEL ANALYSIS */}
-              {/* ===================================== */}
+              {/* PURATA */}
 
-              <section className="mb-8">
+              <div className="rounded-2xl border border-blue-800 bg-blue-950/30 p-5 print:border-black print:bg-white print:p-2.5">
 
-                <div className="mb-4">
-                  <h2 className="text-xl font-black">
-                    🏆 Analisa Mengikut Level
-                  </h2>
+                <div className="text-sm font-bold text-blue-300 print:text-black print:text-[8pt]">
+                  📈 Purata Bacaan
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 print:grid-cols-7">
-
-                  {levelAnalysis.map(
-                    (level) => (
-                      <div
-                        key={level.name}
-                        className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-center print:border-black print:bg-white"
-                      >
-
-                        <div className="text-3xl">
-                          {level.icon}
-                        </div>
-
-                        <div className="mt-2 text-xs font-black">
-                          {level.name}
-                        </div>
-
-                        <div className="mt-1 text-2xl font-black">
-                          {level.count}
-                        </div>
-
-                        <div className="text-[10px] text-slate-500 print:text-black">
-                          murid
-                        </div>
-
-                      </div>
-                    )
+                <div className="mt-2 text-4xl font-black text-blue-400 print:mt-1 print:text-2xl print:text-black">
+                  {statistics.averagePages.toFixed(
+                    1
                   )}
-
                 </div>
 
-              </section>
+                <div className="mt-1 text-xs print:text-[7pt] print:text-black">
+                  muka surat / murid
+                </div>
 
-              {/* ===================================== */}
-              {/* SCHOOL ANALYSIS */}
-              {/* ===================================== */}
+              </div>
 
-              <section className="mb-8">
+            </section>
 
-                <div className="mb-4">
-                  <h2 className="text-xl font-black">
-                    🏫 Analisa Mengikut Sekolah
+            {/* ================================= */}
+            {/* PROGRESS */}
+            {/* ================================= */}
+
+            <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 print:mb-4 print:border-black print:bg-white print:p-2.5">
+
+              <div className="flex items-center justify-between gap-4">
+
+                <div>
+
+                  <h2 className="font-black print:text-[9pt]">
+                    📊 Kadar Pengisian Bacaan
                   </h2>
-                </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 print:border-black print:bg-white">
-
-                  <div className="overflow-x-auto">
-
-                    <table className="w-full min-w-[700px] text-sm">
-
-                      <thead>
-
-                        <tr className="border-b border-slate-800 bg-slate-800 print:border-black print:bg-white">
-
-                          <th className="px-4 py-3 text-left">
-                            Bil.
-                          </th>
-
-                          <th className="px-4 py-3 text-left">
-                            Sekolah
-                          </th>
-
-                          <th className="px-4 py-3 text-center">
-                            Jumlah Murid
-                          </th>
-
-                          <th className="px-4 py-3 text-center">
-                            Sudah Isi
-                          </th>
-
-                          <th className="px-4 py-3 text-center">
-                            Belum Isi
-                          </th>
-
-                          <th className="px-4 py-3 text-center">
-                            Muka Surat
-                          </th>
-
-                          <th className="px-4 py-3 text-center">
-                            %
-                          </th>
-
-                        </tr>
-
-                      </thead>
-
-                      <tbody>
-
-                        {schoolAnalysis.map(
-                          (
-                            school,
-                            index
-                          ) => {
-
-                            const percentage =
-                              school.total >
-                              0
-                                ? Math.round(
-                                    (school.filled /
-                                      school.total) *
-                                      100
-                                  )
-                                : 0;
-
-                            return (
-                              <tr
-                                key={
-                                  school.id
-                                }
-                                className="border-b border-slate-800 last:border-0 print:border-black"
-                              >
-
-                                <td className="px-4 py-3">
-                                  {index + 1}
-                                </td>
-
-                                <td className="px-4 py-3 font-bold">
-
-                                  {school.code && (
-                                    <span className="mr-2 text-xs text-slate-500 print:text-black">
-                                      {
-                                        school.code
-                                      }
-                                    </span>
-                                  )}
-
-                                  {school.name}
-
-                                </td>
-
-                                <td className="px-4 py-3 text-center font-bold">
-                                  {school.total}
-                                </td>
-
-                                <td className="px-4 py-3 text-center font-bold text-emerald-400 print:text-black">
-                                  {school.filled}
-                                </td>
-
-                                <td className="px-4 py-3 text-center font-bold text-red-400 print:text-black">
-                                  {
-                                    school.notFilled
-                                  }
-                                </td>
-
-                                <td className="px-4 py-3 text-center font-bold">
-                                  {school.pages}
-                                </td>
-
-                                <td className="px-4 py-3 text-center font-black">
-                                  {percentage}%
-                                </td>
-
-                              </tr>
-                            );
-                          }
-                        )}
-
-                      </tbody>
-
-                    </table>
-
-                  </div>
+                  <p className="mt-1 text-xs text-slate-400 print:text-[7pt] print:text-black">
+                    {statistics.filled} daripada{" "}
+                    {statistics.total} murid
+                    telah mengisi bacaan.
+                  </p>
 
                 </div>
 
-              </section>
-
-              {/* ===================================== */}
-              {/* STUDENT TABLE */}
-              {/* ===================================== */}
-
-              <section>
-
-                <div className="mb-4 flex items-end justify-between gap-4">
-
-                  <div>
-
-                    <h2 className="text-xl font-black">
-                      📋 Senarai Keseluruhan Murid
-                    </h2>
-
-                    <p className="mt-1 text-xs text-slate-400 print:text-black">
-                      Memaparkan{" "}
-                      {
-                        filteredStudents.length
-                      }{" "}
-                      murid
-                    </p>
-
-                  </div>
-
+                <div className="text-2xl font-black print:text-lg">
+                  {statistics.completion}%
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 print:border-black print:bg-white">
+              </div>
 
-                  <div className="overflow-x-auto">
+              <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-800 print:mt-2 print:h-2 print:border print:border-black">
 
-                    <table className="w-full min-w-[1000px] text-sm">
+                <div
+                  className="h-full rounded-full bg-emerald-500"
+                  style={{
+                    width: `${statistics.completion}%`,
+                  }}
+                />
 
-                      <thead>
+              </div>
 
-                        <tr className="border-b border-slate-800 bg-slate-800 print:border-black print:bg-white">
+            </section>
 
-                          <th className="px-3 py-3 text-center">
-                            Bil.
-                          </th>
+            {/* ================================= */}
+            {/* LEVEL ANALYSIS */}
+            {/* ================================= */}
 
-                          <th className="px-4 py-3 text-left">
-                            Nama Murid
-                          </th>
+            <section className="mb-8 print:mb-4">
 
-                          <th className="px-4 py-3 text-left">
-                            Sekolah
-                          </th>
+              <div className="mb-4 print:mb-2">
 
-                          <th className="px-3 py-3 text-center">
-                            Kumpulan
-                          </th>
+                <h2 className="text-xl font-black print:text-[11pt]">
+                  🏆 Analisa Mengikut Level
+                </h2>
 
-                          <th className="px-3 py-3 text-center">
-                            Muka Surat
-                          </th>
+              </div>
 
-                          <th className="px-3 py-3 text-center">
-                            Bacaan Hari Ini
-                          </th>
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 print:grid-cols-7 print:gap-1.5">
 
-                          <th className="px-3 py-3 text-center">
-                            Level
-                          </th>
+                {levelAnalysis.map(
+                  (level) => (
 
-                          <th className="px-3 py-3 text-center">
-                            Status
-                          </th>
+                    <div
+                      key={level.name}
+                      className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-center print:border-black print:bg-white print:p-1.5"
+                    >
 
-                          <th className="px-4 py-3 text-center">
-                            Masa Terakhir
-                          </th>
+                      <div className="text-3xl print:text-lg">
+                        {level.icon}
+                      </div>
 
-                        </tr>
+                      <div className="mt-2 text-xs font-black print:mt-0.5 print:text-[7pt]">
+                        {level.name}
+                      </div>
 
-                      </thead>
+                      <div className="mt-1 text-2xl font-black print:mt-0.5 print:text-base">
+                        {level.count}
+                      </div>
 
-                      <tbody>
+                      <div className="text-[10px] text-slate-500 print:text-[6pt] print:text-black">
+                        murid
+                      </div>
 
-                        {filteredStudents.map(
-                          (
-                            student,
-                            index
-                          ) => (
+                    </div>
 
+                  )
+                )}
+
+              </div>
+
+            </section>
+
+            {/* ================================= */}
+            {/* SCHOOL ANALYSIS */}
+            {/* ================================= */}
+
+            <section className="mb-8 print:mb-4">
+
+              <div className="mb-4 print:mb-2">
+
+                <h2 className="text-xl font-black print:text-[11pt]">
+                  🏫 Analisa Mengikut Sekolah
+                </h2>
+
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 print:border-black print:bg-white">
+
+                <div className="overflow-x-auto">
+
+                  <table className="w-full min-w-[700px] text-sm print:min-w-0 print:w-full print:table-fixed print:text-[7.5pt]">
+
+                    <thead>
+
+                      <tr className="border-b border-slate-800 bg-slate-800 print:border-black print:bg-white">
+
+                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                          Bil.
+                        </th>
+
+                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                          Sekolah
+                        </th>
+
+                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                          Jumlah Murid
+                        </th>
+
+                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                          Sudah Isi
+                        </th>
+
+                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                          Belum Isi
+                        </th>
+
+                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                          Muka Surat
+                        </th>
+
+                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                          %
+                        </th>
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {schoolAnalysis.map(
+                        (
+                          school,
+                          index
+                        ) => {
+
+                          const percentage =
+                            school.total >
+                            0
+                              ? Math.round(
+                                  (school.filled /
+                                    school.total) *
+                                    100
+                                )
+                              : 0;
+
+                          return (
                             <tr
                               key={
-                                student.id
+                                school.id
                               }
-                              className="border-b border-slate-800 last:border-0 print:border-black"
+                              className="border-b border-slate-800 last:border-0 print:border-black print:break-inside-avoid"
                             >
 
-                              <td className="px-3 py-3 text-center">
+                              <td className="px-4 py-3 print:px-1.5 print:py-1">
                                 {index + 1}
                               </td>
 
-                              <td className="px-4 py-3 font-bold">
-                                {student.name}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {
-                                  student.school_name
-                                }
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-                                Kumpulan{" "}
-                                {
-                                  student.group_number
-                                }
-                              </td>
-
-                              <td className="px-3 py-3 text-center font-black">
-                                {
-                                  student.current_page
-                                }
-                              </td>
-
-                              <td className="px-3 py-3 text-center font-bold">
-                                {student.pages_today >
-                                0
-                                  ? `+${student.pages_today}`
-                                  : "-"}
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-
-                                <span className="inline-flex items-center gap-1 font-bold">
-                                  {
-                                    student.level_icon
-                                  }{" "}
-                                  {
-                                    student.level
-                                  }
-                                </span>
-
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-
-                                {student.has_read_today ? (
-                                  <span className="font-bold text-emerald-400 print:text-black">
-                                    ✓ SUDAH ISI
-                                  </span>
-                                ) : (
-                                  <span className="font-bold text-red-400 print:text-black">
-                                    ✕ BELUM ISI
+                              <td className="px-4 py-3 font-bold print:px-1.5 print:py-1">
+                                {school.code && (
+                                  <span className="mr-2 text-xs text-slate-500 print:mr-1 print:text-[7pt] print:text-black">
+                                    {
+                                      school.code
+                                    }
                                   </span>
                                 )}
 
+                                {
+                                  school.name
+                                }
                               </td>
 
-                              <td className="px-4 py-3 text-center text-xs text-slate-400 print:text-black">
+                              <td className="px-4 py-3 text-center font-bold print:px-1.5 print:py-1">
+                                {
+                                  school.total
+                                }
+                              </td>
 
-                                {student.latest_reading
-                                  ? formatDateTime(
-                                      student
-                                        .latest_reading
-                                        .created_at
-                                    )
-                                  : "-"}
+                              <td className="px-4 py-3 text-center font-bold text-emerald-400 print:px-1.5 print:py-1 print:text-black">
+                                {
+                                  school.filled
+                                }
+                              </td>
 
+                              <td className="px-4 py-3 text-center font-bold text-red-400 print:px-1.5 print:py-1 print:text-black">
+                                {
+                                  school.notFilled
+                                }
+                              </td>
+
+                              <td className="px-4 py-3 text-center font-bold print:px-1.5 print:py-1">
+                                {
+                                  school.pages
+                                }
+                              </td>
+
+                              <td className="px-4 py-3 text-center font-black print:px-1.5 print:py-1">
+                                {percentage}%
                               </td>
 
                             </tr>
+                          );
+                        }
+                      )}
 
-                          )
-                        )}
+                    </tbody>
 
-                        {filteredStudents.length ===
-                          0 && (
-                          <tr>
+                  </table>
 
-                            <td
-                              colSpan={9}
-                              className="px-4 py-12 text-center text-slate-400 print:text-black"
-                            >
-                              Tiada murid ditemui berdasarkan tapisan yang dipilih.
-                            </td>
-
-                          </tr>
-                        )}
-
-                      </tbody>
-
-                    </table>
-
-                  </div>
-
-                </div>
-
-              </section>
-
-              {/* ===================================== */}
-              {/* PRINT FOOTER */}
-              {/* ===================================== */}
-
-              <div className="mt-12 hidden print:block">
-
-                <div className="grid grid-cols-2 gap-20">
-
-                  <div className="text-center">
-
-                    <div className="mb-12 border-b border-black" />
-
-                    <div className="font-bold">
-                      Guru / Penyelaras
-                    </div>
-
-                  </div>
-
-                  <div className="text-center">
-
-                    <div className="mb-12 border-b border-black" />
-
-                    <div className="font-bold">
-                      Pegawai / Penyelaras PPD
-                    </div>
-
-                  </div>
-
-                </div>
-
-                <div className="mt-8 text-center text-xs">
-                  Dijana oleh Sistem QURAN RANKING LIVE – PPD MACHANG
                 </div>
 
               </div>
 
-            </>
-          )}
+            </section>
+
+            {/* ================================= */}
+            {/* STUDENT TABLE */}
+            {/* ================================= */}
+
+            <section>
+
+              <div className="mb-4 flex items-end justify-between gap-4 print:mb-2">
+
+                <div>
+
+                  <h2 className="text-xl font-black print:text-[11pt]">
+                    📋 Senarai Keseluruhan Murid
+                  </h2>
+
+                  <p className="mt-1 text-xs text-slate-400 print:mt-0.5 print:text-[7pt] print:text-black">
+                    Memaparkan{" "}
+                    {
+                      filteredStudents.length
+                    }{" "}
+                    murid
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 print:border-black print:bg-white">
+
+                <div className="overflow-x-auto">
+
+                  <table className="w-full min-w-[1000px] text-sm print:min-w-0 print:w-full print:table-fixed print:text-[7.5pt]">
+
+                    <thead>
+
+                      <tr className="border-b border-slate-800 bg-slate-800 print:border-black print:bg-white">
+
+                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                          Bil.
+                        </th>
+
+                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                          Nama Murid
+                        </th>
+
+                        <th className="px-4 py-3 text-left print:px-1.5 print:py-1">
+                          Sekolah
+                        </th>
+
+                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                          Kumpulan
+                        </th>
+
+                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                          Muka Surat
+                        </th>
+
+                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                          Bacaan Hari Ini
+                        </th>
+
+                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                          Level
+                        </th>
+
+                        <th className="px-3 py-3 text-center print:px-1 print:py-1">
+                          Status
+                        </th>
+
+                        <th className="px-4 py-3 text-center print:px-1.5 print:py-1">
+                          Masa Terakhir
+                        </th>
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {filteredStudents.map(
+                        (
+                          student,
+                          index
+                        ) => (
+
+                          <tr
+                            key={
+                              student.id
+                            }
+                            className="border-b border-slate-800 last:border-0 print:border-black print:break-inside-avoid"
+                          >
+
+                            <td className="px-3 py-3 text-center print:px-1 print:py-1">
+                              {
+                                index +
+                                1
+                              }
+                            </td>
+
+                            <td className="px-4 py-3 font-bold print:px-1.5 print:py-1 print:leading-tight">
+                              {
+                                student.name
+                              }
+                            </td>
+
+                            <td className="px-4 py-3 print:px-1.5 print:py-1 print:leading-tight">
+                              {
+                                student.school_name
+                              }
+                            </td>
+
+                            <td className="px-3 py-3 text-center print:px-1 print:py-1 print:leading-tight">
+                              Kumpulan{" "}
+                              {
+                                student.group_number
+                              }
+                            </td>
+
+                            <td className="px-3 py-3 text-center font-black print:px-1 print:py-1">
+                              {
+                                student.current_page
+                              }
+                            </td>
+
+                            <td className="px-3 py-3 text-center font-bold print:px-1 print:py-1">
+                              {student.pages_today >
+                              0
+                                ? `+${student.pages_today}`
+                                : "-"}
+                            </td>
+
+                            <td className="px-3 py-3 text-center print:px-1 print:py-1">
+
+                              <span className="inline-flex items-center gap-1 font-bold print:gap-0">
+                                {
+                                  student.level_icon
+                                }{" "}
+                                {
+                                  student.level
+                                }
+                              </span>
+
+                            </td>
+
+                            <td className="px-3 py-3 text-center print:px-1 print:py-1">
+
+                              {student.has_read_today ? (
+                                <span className="font-bold text-emerald-400 print:text-black">
+                                  ✓ SUDAH ISI
+                                </span>
+                              ) : (
+                                <span className="font-bold text-red-400 print:text-black">
+                                  ✕ BELUM ISI
+                                </span>
+                              )}
+
+                            </td>
+
+                            <td className="px-4 py-3 text-center text-xs text-slate-400 print:px-1.5 print:py-1 print:text-[7pt] print:text-black">
+                              {student.latest_reading
+                                ? formatDateTime(
+                                    student
+                                      .latest_reading
+                                      .created_at
+                                  )
+                                : "-"}
+                            </td>
+
+                          </tr>
+
+                        )
+                      )}
+
+                      {filteredStudents.length ===
+                        0 && (
+                        <tr>
+
+                          <td
+                            colSpan={
+                              9
+                            }
+                            className="px-4 py-12 text-center text-slate-400 print:text-black"
+                          >
+                            Tiada murid ditemui berdasarkan tapisan yang dipilih.
+                          </td>
+
+                        </tr>
+                      )}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              </div>
+
+            </section>
+
+            {/* ================================= */}
+            {/* PRINT FOOTER */}
+            {/* ================================= */}
+
+            <div className="mt-12 hidden print:mt-6 print:block">
+
+              <div className="grid grid-cols-2 gap-20">
+
+                <div className="text-center">
+
+                  <div className="mb-12 border-b border-black print:mb-8" />
+
+                  <div className="font-bold text-sm">
+                    Guru / Penyelaras
+                  </div>
+
+                </div>
+
+                <div className="text-center">
+
+                  <div className="mb-12 border-b border-black print:mb-8" />
+
+                  <div className="font-bold text-sm">
+                    Pegawai / Penyelaras PPD
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="mt-8 text-center text-xs">
+                Dijana oleh Sistem QURAN RANKING LIVE – PPD MACHANG
+              </div>
+
+            </div>
+
+          </>
 
         </main>
 
@@ -1372,21 +1552,28 @@ export default function AnalisaKeseluruhanPage() {
 
       <style jsx global>{`
         @media print {
+
           @page {
             size: A4 landscape;
-            margin: 10mm;
+            margin: 6mm;
           }
 
           html,
           body {
             background: white !important;
             color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+
+          /* ================================ */
+          /* SEMBUNYIKAN ELEMEN SCREEN */
+          /* ================================ */
 
           .print\\\\:hidden {
             display: none !important;
@@ -1396,13 +1583,15 @@ export default function AnalisaKeseluruhanPage() {
             display: block !important;
           }
 
-          table {
-            page-break-inside: auto;
-          }
+          /* ================================ */
+          /* JADUAL */
+          /* ================================ */
 
-          tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
+          table {
+            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto;
           }
 
           thead {
@@ -1412,8 +1601,50 @@ export default function AnalisaKeseluruhanPage() {
           tfoot {
             display: table-footer-group;
           }
+
+          th,
+          td {
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+            line-height: 1.15 !important;
+            vertical-align: middle !important;
+          }
+
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: auto;
+          }
+
+          /* ================================ */
+          /* KURANGKAN JARAK ANTARA SEKSYEN */
+          /* ================================ */
+
+          section {
+            page-break-inside: auto;
+          }
+
+          /* ================================ */
+          /* KURANGKAN FONT JADUAL */
+          /* ================================ */
+
+          table {
+            font-size: 7.5pt !important;
+          }
+
+          /* ================================ */
+          /* NAMA PANJANG */
+          /* ================================ */
+
+          td,
+          th {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+          }
+
         }
       `}</style>
+
     </>
   );
 }
