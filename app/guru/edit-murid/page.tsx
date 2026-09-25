@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { supabase } from "@/lib/supabase";
 
 type School = {
@@ -71,82 +77,117 @@ function getLevel(page: number) {
   };
 }
 
+/* ========================================= */
+/* COMPRESS GAMBAR */
+/* ========================================= */
+
 async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) {
     throw new Error("Fail yang dipilih bukan gambar.");
   }
 
   if (file.size > 15 * 1024 * 1024) {
-    throw new Error("Saiz gambar terlalu besar. Maksimum 15MB.");
+    throw new Error(
+      "Saiz gambar terlalu besar. Maksimum 15MB."
+    );
   }
 
-  const image = new Image();
+  const image = await createImageBitmap(file);
 
-  const objectUrl = URL.createObjectURL(file);
+  const maxDimension = 800;
 
-  try {
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("Gagal membaca gambar."));
-      image.src = objectUrl;
-    });
+  const scale = Math.min(
+    1,
+    maxDimension /
+      Math.max(
+        image.width,
+        image.height
+      )
+  );
 
-    const maxDimension = 1600;
+  const width = Math.max(
+    1,
+    Math.round(image.width * scale)
+  );
 
-    let width = image.naturalWidth;
-    let height = image.naturalHeight;
+  const height = Math.max(
+    1,
+    Math.round(image.height * scale)
+  );
 
-    if (width > maxDimension || height > maxDimension) {
-      const ratio = Math.min(
-        maxDimension / width,
-        maxDimension / height
-      );
+  const canvas = document.createElement("canvas");
 
-      width = Math.round(width * ratio);
-      height = Math.round(height * ratio);
-    }
+  canvas.width = width;
+  canvas.height = height;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+  const context = canvas.getContext("2d");
 
-    const ctx = canvas.getContext("2d");
+  if (!context) {
+    image.close();
+    throw new Error("Gagal memproses gambar.");
+  }
 
-    if (!ctx) {
-      throw new Error("Gagal memproses gambar.");
-    }
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
 
-    ctx.drawImage(image, 0, 0, width, height);
+  context.drawImage(
+    image,
+    0,
+    0,
+    width,
+    height
+  );
 
-    let quality = 0.82;
-    let blob: Blob | null = null;
+  image.close();
 
-    while (quality >= 0.4) {
-      blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/jpeg", quality)
-      );
+  let quality = 0.85;
+  let blob: Blob | null = null;
 
-      if (blob && blob.size <= 700 * 1024) {
-        break;
+  const targetSize = 250 * 1024;
+
+  while (quality >= 0.4) {
+    blob = await new Promise<Blob | null>(
+      (resolve) => {
+        canvas.toBlob(
+          resolve,
+          "image/jpeg",
+          quality
+        );
       }
+    );
 
-      quality -= 0.08;
+    if (
+      blob &&
+      blob.size <= targetSize
+    ) {
+      break;
     }
 
-    if (!blob) {
-      throw new Error("Gagal menghasilkan gambar.");
-    }
-
-    if (blob.size > 3 * 1024 * 1024) {
-      throw new Error("Gambar masih terlalu besar selepas dimampatkan.");
-    }
-
-    return new File([blob], "profile.jpg", {
-      type: "image/jpeg",
-    });
-  } finally {
-    URL.revokeObjectURL(objectUrl);
+    quality -= 0.1;
   }
+
+  if (!blob) {
+    throw new Error(
+      "Gagal menghasilkan gambar."
+    );
+  }
+
+  if (
+    blob.size >
+    3 * 1024 * 1024
+  ) {
+    throw new Error(
+      "Gambar masih terlalu besar selepas dimampatkan."
+    );
+  }
+
+  return new File(
+    [blob],
+    "profile.jpg",
+    {
+      type: "image/jpeg",
+    }
+  );
 }
 
 export default function EditMuridPage() {
@@ -214,7 +255,10 @@ export default function EditMuridPage() {
       setSchools((schoolData ?? []) as School[]);
       setParticipants((participantData ?? []) as Participant[]);
     } catch (err: any) {
-      setError(err?.message || "Gagal memuatkan data.");
+      setError(
+        err?.message ||
+          "Gagal memuatkan data."
+      );
     } finally {
       setLoading(false);
     }
@@ -230,7 +274,9 @@ export default function EditMuridPage() {
     return participants.filter((participant) => {
       const matchesSearch =
         !keyword ||
-        participant.name.toLowerCase().includes(keyword);
+        participant.name
+          .toLowerCase()
+          .includes(keyword);
 
       const matchesSchool =
         !filterSchool ||
@@ -240,31 +286,55 @@ export default function EditMuridPage() {
         !filterGroup ||
         String(participant.group_number) === filterGroup;
 
-      return matchesSearch && matchesSchool && matchesGroup;
+      return (
+        matchesSearch &&
+        matchesSchool &&
+        matchesGroup
+      );
     });
-  }, [participants, search, filterSchool, filterGroup]);
+  }, [
+    participants,
+    search,
+    filterSchool,
+    filterGroup,
+  ]);
 
   const selectedParticipant = useMemo(
     () =>
       participants.find(
-        (participant) => participant.id === selectedId
+        (participant) =>
+          participant.id === selectedId
       ) ?? null,
     [participants, selectedId]
   );
 
   const formLevel = getLevel(
-    Math.max(0, Math.min(604, Number(formCurrentPage) || 0))
+    Math.max(
+      0,
+      Math.min(
+        604,
+        Number(formCurrentPage) || 0
+      )
+    )
   );
 
-  function selectParticipant(participant: Participant) {
+  function selectParticipant(
+    participant: Participant
+  ) {
     setSelectedId(participant.id);
     setFormName(participant.name);
     setFormSchoolId(participant.school_id);
-    setFormGroup(String(participant.group_number));
-    setFormCurrentPage(String(participant.current_page));
+    setFormGroup(
+      String(participant.group_number)
+    );
+    setFormCurrentPage(
+      String(participant.current_page)
+    );
 
     setFormPhotoFile(null);
-    setFormPhotoPreview(participant.photo_url || "");
+    setFormPhotoPreview(
+      participant.photo_url || ""
+    );
 
     setError("");
     setSuccess("");
@@ -291,7 +361,8 @@ export default function EditMuridPage() {
   function handlePhotoChange(
     event: ChangeEvent<HTMLInputElement>
   ) {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     if (!file) {
       return;
@@ -301,13 +372,17 @@ export default function EditMuridPage() {
     setSuccess("");
 
     if (!file.type.startsWith("image/")) {
-      setError("Sila pilih fail gambar.");
+      setError(
+        "Sila pilih fail gambar."
+      );
       return;
     }
 
     setFormPhotoFile(file);
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl =
+      URL.createObjectURL(file);
+
     setFormPhotoPreview(previewUrl);
   }
 
@@ -315,32 +390,45 @@ export default function EditMuridPage() {
     participantId: string,
     file: File
   ) {
-    const compressedFile = await compressImage(file);
+    const compressedFile =
+      await compressImage(file);
 
-    const path = `${participantId}/profile.jpg`;
+    const path =
+      `${participantId}/profile.jpg`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("participant-photos")
-      .upload(path, compressedFile, {
-        cacheControl: "3600",
-        upsert: true,
-        contentType: "image/jpeg",
-      });
+    const { error: uploadError } =
+      await supabase.storage
+        .from("participant-photos")
+        .upload(
+          path,
+          compressedFile,
+          {
+            cacheControl: "3600",
+            upsert: true,
+            contentType: "image/jpeg",
+          }
+        );
 
     if (uploadError) {
       throw uploadError;
     }
 
-    const { data: publicUrlData } = supabase.storage
+    const {
+      data: publicUrlData,
+    } = supabase.storage
       .from("participant-photos")
       .getPublicUrl(path);
 
-    const publicUrl = publicUrlData.publicUrl;
+    const publicUrl =
+      publicUrlData.publicUrl;
 
-    const { error: photoRpcError } = await supabase.rpc(
+    const {
+      error: photoRpcError,
+    } = await supabase.rpc(
       "update_participant_photo",
       {
-        p_participant_id: participantId,
+        p_participant_id:
+          participantId,
         p_photo_url: publicUrl,
       }
     );
@@ -352,29 +440,44 @@ export default function EditMuridPage() {
     return publicUrl;
   }
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
+  async function handleSave(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     if (!selectedParticipant) {
-      setError("Sila pilih murid terlebih dahulu.");
+      setError(
+        "Sila pilih murid terlebih dahulu."
+      );
       return;
     }
 
     setError("");
     setSuccess("");
 
-    const name = formName.trim();
-    const schoolId = formSchoolId;
-    const groupNumber = Number(formGroup);
-    const currentPage = Number(formCurrentPage);
+    const name =
+      formName.trim();
+
+    const schoolId =
+      formSchoolId;
+
+    const groupNumber =
+      Number(formGroup);
+
+    const currentPage =
+      Number(formCurrentPage);
 
     if (!name) {
-      setError("Nama murid diperlukan.");
+      setError(
+        "Nama murid diperlukan."
+      );
       return;
     }
 
     if (!schoolId) {
-      setError("Sila pilih sekolah.");
+      setError(
+        "Sila pilih sekolah."
+      );
       return;
     }
 
@@ -383,7 +486,9 @@ export default function EditMuridPage() {
       groupNumber < 1 ||
       groupNumber > 10
     ) {
-      setError("Kumpulan mestilah antara 1 hingga 10.");
+      setError(
+        "Kumpulan mestilah antara 1 hingga 10."
+      );
       return;
     }
 
@@ -392,21 +497,29 @@ export default function EditMuridPage() {
       currentPage < 0 ||
       currentPage > 604
     ) {
-      setError("Muka surat mestilah antara 0 hingga 604.");
+      setError(
+        "Muka surat mestilah antara 0 hingga 604."
+      );
       return;
     }
 
     setSaving(true);
 
     try {
-      const { data, error: updateError } = await supabase.rpc(
+      const {
+        data,
+        error: updateError,
+      } = await supabase.rpc(
         "update_participant",
         {
-          p_participant_id: selectedParticipant.id,
+          p_participant_id:
+            selectedParticipant.id,
           p_school_id: schoolId,
           p_name: name,
-          p_group_number: groupNumber,
-          p_current_page: currentPage,
+          p_group_number:
+            groupNumber,
+          p_current_page:
+            currentPage,
         }
       );
 
@@ -415,29 +528,38 @@ export default function EditMuridPage() {
       }
 
       let updatedPhotoUrl =
-        selectedParticipant.photo_url || null;
+        selectedParticipant.photo_url ||
+        null;
 
       if (formPhotoFile) {
-        updatedPhotoUrl = await uploadParticipantPhoto(
-          selectedParticipant.id,
-          formPhotoFile
-        );
+        updatedPhotoUrl =
+          await uploadParticipantPhoto(
+            selectedParticipant.id,
+            formPhotoFile
+          );
       }
 
-      const updatedParticipant: Participant = {
-        ...(data as Participant),
-        photo_url: updatedPhotoUrl,
-      };
+      const updatedParticipant:
+        Participant = {
+          ...(data as Participant),
+          photo_url:
+            updatedPhotoUrl,
+        };
 
-      setParticipants((current) =>
-        current.map((participant) =>
-          participant.id === selectedParticipant.id
-            ? updatedParticipant
-            : participant
-        )
+      setParticipants(
+        (current) =>
+          current.map(
+            (participant) =>
+              participant.id ===
+              selectedParticipant.id
+                ? updatedParticipant
+                : participant
+          )
       );
 
-      setSuccess("✓ Maklumat murid berjaya dikemaskini.");
+      setSuccess(
+        "✓ Maklumat murid berjaya dikemaskini."
+      );
 
       setFormPhotoFile(null);
 
@@ -454,16 +576,19 @@ export default function EditMuridPage() {
 
   async function handleDelete() {
     if (!selectedParticipant) {
-      setError("Sila pilih murid terlebih dahulu.");
+      setError(
+        "Sila pilih murid terlebih dahulu."
+      );
       return;
     }
 
-    const confirmed = window.confirm(
-      `ANDA PASTI MAHU PADAM MURID INI?\n\n` +
-        `Nama: ${selectedParticipant.name}\n\n` +
-        `Tindakan ini akan memadam data murid dan rekod bacaan murid tersebut.\n\n` +
-        `Tindakan ini tidak boleh dibuat asal semula.`
-    );
+    const confirmed =
+      window.confirm(
+        `ANDA PASTI MAHU PADAM MURID INI?\n\n` +
+          `Nama: ${selectedParticipant.name}\n\n` +
+          `Tindakan ini akan memadam data murid dan rekod bacaan murid tersebut.\n\n` +
+          `Tindakan ini tidak boleh dibuat asal semula.`
+      );
 
     if (!confirmed) {
       return;
@@ -474,10 +599,13 @@ export default function EditMuridPage() {
     setSuccess("");
 
     try {
-      const { error: deleteError } = await supabase.rpc(
+      const {
+        error: deleteError,
+      } = await supabase.rpc(
         "delete_participant",
         {
-          p_participant_id: selectedParticipant.id,
+          p_participant_id:
+            selectedParticipant.id,
         }
       );
 
@@ -485,11 +613,13 @@ export default function EditMuridPage() {
         throw deleteError;
       }
 
-      setParticipants((current) =>
-        current.filter(
-          (participant) =>
-            participant.id !== selectedParticipant.id
-        )
+      setParticipants(
+        (current) =>
+          current.filter(
+            (participant) =>
+              participant.id !==
+              selectedParticipant.id
+          )
       );
 
       setSelectedId("");
@@ -515,9 +645,12 @@ export default function EditMuridPage() {
     }
   }
 
-  function getSchoolName(schoolId: string) {
+  function getSchoolName(
+    schoolId: string
+  ) {
     const school = schools.find(
-      (item) => item.id === schoolId
+      (item) =>
+        item.id === schoolId
     );
 
     if (!school) {
@@ -532,6 +665,7 @@ export default function EditMuridPage() {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 
         {/* HEADER */}
+
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-emerald-400">
@@ -556,6 +690,7 @@ export default function EditMuridPage() {
         </div>
 
         {/* ALERT */}
+
         {error && (
           <div className="mb-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-300">
             ⚠️ {error}
@@ -569,6 +704,7 @@ export default function EditMuridPage() {
         )}
 
         {/* EDIT FORM */}
+
         {selectedParticipant && (
           <section className="mb-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
 
@@ -585,7 +721,8 @@ export default function EditMuridPage() {
                 </div>
 
                 <div className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">
-                  Kumpulan {selectedParticipant.group_number}
+                  Kumpulan{" "}
+                  {selectedParticipant.group_number}
                 </div>
               </div>
             </div>
@@ -597,6 +734,7 @@ export default function EditMuridPage() {
               <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
 
                 {/* PHOTO */}
+
                 <div>
                   <label className="mb-2 block text-sm font-bold text-slate-300">
                     Foto Murid
@@ -606,7 +744,10 @@ export default function EditMuridPage() {
                     {formPhotoPreview ? (
                       <img
                         src={formPhotoPreview}
-                        alt={formName || "Foto murid"}
+                        alt={
+                          formName ||
+                          "Foto murid"
+                        }
                         className="aspect-square w-full object-cover"
                       />
                     ) : (
@@ -618,11 +759,14 @@ export default function EditMuridPage() {
 
                   <label className="mt-3 block cursor-pointer rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-center text-sm font-bold text-slate-200 transition hover:border-emerald-500 hover:text-emerald-400">
                     📷 Tukar Foto
+
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={handlePhotoChange}
+                      onChange={
+                        handlePhotoChange
+                      }
                     />
                   </label>
 
@@ -632,6 +776,7 @@ export default function EditMuridPage() {
                 </div>
 
                 {/* FORM */}
+
                 <div className="grid gap-4 sm:grid-cols-2">
 
                   <div className="sm:col-span-2">
@@ -643,7 +788,9 @@ export default function EditMuridPage() {
                       type="text"
                       value={formName}
                       onChange={(e) =>
-                        setFormName(e.target.value)
+                        setFormName(
+                          e.target.value
+                        )
                       }
                       className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-500"
                       placeholder="Nama murid"
@@ -658,7 +805,9 @@ export default function EditMuridPage() {
                     <select
                       value={formSchoolId}
                       onChange={(e) =>
-                        setFormSchoolId(e.target.value)
+                        setFormSchoolId(
+                          e.target.value
+                        )
                       }
                       className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-500"
                     >
@@ -666,14 +815,17 @@ export default function EditMuridPage() {
                         Pilih sekolah
                       </option>
 
-                      {schools.map((school) => (
-                        <option
-                          key={school.id}
-                          value={school.id}
-                        >
-                          {school.code} – {school.name}
-                        </option>
-                      ))}
+                      {schools.map(
+                        (school) => (
+                          <option
+                            key={school.id}
+                            value={school.id}
+                          >
+                            {school.code} –{" "}
+                            {school.name}
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
 
@@ -685,21 +837,29 @@ export default function EditMuridPage() {
                     <select
                       value={formGroup}
                       onChange={(e) =>
-                        setFormGroup(e.target.value)
+                        setFormGroup(
+                          e.target.value
+                        )
                       }
                       className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-500"
                     >
                       {Array.from(
-                        { length: 10 },
-                        (_, index) => index + 1
-                      ).map((group) => (
-                        <option
-                          key={group}
-                          value={group}
-                        >
-                          Kumpulan {group}
-                        </option>
-                      ))}
+                        {
+                          length: 10,
+                        },
+                        (_, index) =>
+                          index + 1
+                      ).map(
+                        (group) => (
+                          <option
+                            key={group}
+                            value={group}
+                          >
+                            Kumpulan{" "}
+                            {group}
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
 
@@ -712,9 +872,13 @@ export default function EditMuridPage() {
                       type="number"
                       min={0}
                       max={604}
-                      value={formCurrentPage}
+                      value={
+                        formCurrentPage
+                      }
                       onChange={(e) =>
-                        setFormCurrentPage(e.target.value)
+                        setFormCurrentPage(
+                          e.target.value
+                        )
                       }
                       className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-500"
                     />
@@ -736,11 +900,14 @@ export default function EditMuridPage() {
                     </div>
                   </div>
 
-                  <div className="sm:col-span-2 mt-2 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-2 grid gap-3 sm:col-span-2 sm:grid-cols-3">
 
                     <button
                       type="submit"
-                      disabled={saving || deleting}
+                      disabled={
+                        saving ||
+                        deleting
+                      }
                       className="rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-black text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {saving
@@ -750,8 +917,13 @@ export default function EditMuridPage() {
 
                     <button
                       type="button"
-                      onClick={handleCancel}
-                      disabled={saving || deleting}
+                      onClick={
+                        handleCancel
+                      }
+                      disabled={
+                        saving ||
+                        deleting
+                      }
                       className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3.5 text-sm font-black text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       ✕ BATAL
@@ -759,8 +931,13 @@ export default function EditMuridPage() {
 
                     <button
                       type="button"
-                      onClick={handleDelete}
-                      disabled={saving || deleting}
+                      onClick={
+                        handleDelete
+                      }
+                      disabled={
+                        saving ||
+                        deleting
+                      }
                       className="rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3.5 text-sm font-black text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {deleting
@@ -776,6 +953,7 @@ export default function EditMuridPage() {
         )}
 
         {/* SEARCH / FILTER */}
+
         <section className="mb-6 rounded-3xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6">
 
           <div className="mb-4">
@@ -793,7 +971,11 @@ export default function EditMuridPage() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) =>
+                setSearch(
+                  e.target.value
+                )
+              }
               placeholder="Cari nama murid..."
               className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
             />
@@ -801,7 +983,9 @@ export default function EditMuridPage() {
             <select
               value={filterSchool}
               onChange={(e) =>
-                setFilterSchool(e.target.value)
+                setFilterSchool(
+                  e.target.value
+                )
               }
               className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
             >
@@ -809,20 +993,25 @@ export default function EditMuridPage() {
                 Semua Sekolah
               </option>
 
-              {schools.map((school) => (
-                <option
-                  key={school.id}
-                  value={school.id}
-                >
-                  {school.code} – {school.name}
-                </option>
-              ))}
+              {schools.map(
+                (school) => (
+                  <option
+                    key={school.id}
+                    value={school.id}
+                  >
+                    {school.code} –{" "}
+                    {school.name}
+                  </option>
+                )
+              )}
             </select>
 
             <select
               value={filterGroup}
               onChange={(e) =>
-                setFilterGroup(e.target.value)
+                setFilterGroup(
+                  e.target.value
+                )
               }
               className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
             >
@@ -831,22 +1020,28 @@ export default function EditMuridPage() {
               </option>
 
               {Array.from(
-                { length: 10 },
-                (_, index) => index + 1
-              ).map((group) => (
-                <option
-                  key={group}
-                  value={group}
-                >
-                  Kumpulan {group}
-                </option>
-              ))}
+                {
+                  length: 10,
+                },
+                (_, index) =>
+                  index + 1
+              ).map(
+                (group) => (
+                  <option
+                    key={group}
+                    value={group}
+                  >
+                    Kumpulan {group}
+                  </option>
+                )
+              )}
             </select>
 
           </div>
         </section>
 
         {/* STUDENT LIST */}
+
         <section>
 
           <div className="mb-4 flex items-center justify-between">
@@ -856,7 +1051,10 @@ export default function EditMuridPage() {
               </h2>
 
               <p className="text-sm text-slate-400">
-                {filteredParticipants.length} murid dipaparkan
+                {
+                  filteredParticipants.length
+                }{" "}
+                murid dipaparkan
               </p>
             </div>
           </div>
@@ -865,9 +1063,12 @@ export default function EditMuridPage() {
             <div className="rounded-3xl border border-slate-800 bg-slate-900 p-10 text-center text-slate-400">
               ⏳ Memuatkan senarai murid...
             </div>
-          ) : filteredParticipants.length === 0 ? (
+          ) : filteredParticipants.length ===
+            0 ? (
             <div className="rounded-3xl border border-slate-800 bg-slate-900 p-10 text-center">
-              <div className="text-4xl">🔍</div>
+              <div className="text-4xl">
+                🔍
+              </div>
 
               <p className="mt-3 font-bold text-slate-300">
                 Tiada murid ditemui.
@@ -880,84 +1081,109 @@ export default function EditMuridPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
-              {filteredParticipants.map((participant) => {
-                const level = getLevel(
-                  participant.current_page
-                );
+              {filteredParticipants.map(
+                (participant) => {
+                  const level =
+                    getLevel(
+                      participant.current_page
+                    );
 
-                const isSelected =
-                  participant.id === selectedId;
+                  const isSelected =
+                    participant.id ===
+                    selectedId;
 
-                return (
-                  <button
-                    key={participant.id}
-                    type="button"
-                    onClick={() =>
-                      selectParticipant(participant)
-                    }
-                    className={`overflow-hidden rounded-2xl border text-left transition ${
-                      isSelected
-                        ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20"
-                        : "border-slate-800 bg-slate-900 hover:border-slate-600"
-                    }`}
-                  >
-                    <div className="flex gap-4 p-4">
+                  return (
+                    <button
+                      key={
+                        participant.id
+                      }
+                      type="button"
+                      onClick={() =>
+                        selectParticipant(
+                          participant
+                        )
+                      }
+                      className={`overflow-hidden rounded-2xl border text-left transition ${
+                        isSelected
+                          ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20"
+                          : "border-slate-800 bg-slate-900 hover:border-slate-600"
+                      }`}
+                    >
+                      <div className="flex gap-4 p-4">
 
-                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
-                        {participant.photo_url ? (
-                          <img
-                            src={participant.photo_url}
-                            alt={participant.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-2xl">
-                            👤
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate font-black text-white">
-                          {participant.name}
-                        </h3>
-
-                        <p className="mt-1 truncate text-xs text-slate-400">
-                          {getSchoolName(
-                            participant.school_id
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+                          {participant.photo_url ? (
+                            <img
+                              src={
+                                participant.photo_url
+                              }
+                              alt={
+                                participant.name
+                              }
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-2xl">
+                              👤
+                            </div>
                           )}
-                        </p>
+                        </div>
 
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate font-black text-white">
+                            {
+                              participant.name
+                            }
+                          </h3>
 
-                          <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-300">
-                            Kumpulan{" "}
-                            {participant.group_number}
-                          </span>
+                          <p className="mt-1 truncate text-xs text-slate-400">
+                            {getSchoolName(
+                              participant.school_id
+                            )}
+                          </p>
 
-                          <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-bold text-emerald-400">
-                            {level.icon} {level.name}
-                          </span>
+                          <div className="mt-2 flex flex-wrap gap-2">
 
+                            <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-300">
+                              Kumpulan{" "}
+                              {
+                                participant.group_number
+                              }
+                            </span>
+
+                            <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-bold text-emerald-400">
+                              {
+                                level.icon
+                              }{" "}
+                              {
+                                level.name
+                              }
+                            </span>
+
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="border-t border-slate-800 px-4 py-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">
-                          Muka surat
-                        </span>
+                      <div className="border-t border-slate-800 px-4 py-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">
+                            Muka surat
+                          </span>
 
-                        <span className="font-black text-emerald-400">
-                          {participant.current_page}
-                          /604
-                        </span>
+                          <span className="font-black text-emerald-400">
+                            {
+                              participant.current_page
+                            }
+                            /604
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                }
+              )}
 
             </div>
           )}
@@ -965,33 +1191,46 @@ export default function EditMuridPage() {
         </section>
 
         {/* INFO */}
+
         <section className="mt-8 grid gap-4 sm:grid-cols-3">
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div className="text-2xl">✏️</div>
+            <div className="text-2xl">
+              ✏️
+            </div>
+
             <h3 className="mt-2 font-black">
               Edit Maklumat
             </h3>
+
             <p className="mt-1 text-xs leading-5 text-slate-400">
               Tukar nama, sekolah, kumpulan, muka surat dan foto murid.
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div className="text-2xl">🗑️</div>
+            <div className="text-2xl">
+              🗑️
+            </div>
+
             <h3 className="mt-2 font-black">
               Padam Murid
             </h3>
+
             <p className="mt-1 text-xs leading-5 text-slate-400">
               Memadam murid turut memadam rekod bacaan murid tersebut.
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div className="text-2xl">👑</div>
+            <div className="text-2xl">
+              👑
+            </div>
+
             <h3 className="mt-2 font-black">
               Level Automatik
             </h3>
+
             <p className="mt-1 text-xs leading-5 text-slate-400">
               Level dikira secara automatik berdasarkan muka surat semasa.
             </p>
@@ -1000,6 +1239,7 @@ export default function EditMuridPage() {
         </section>
 
         {/* BOTTOM */}
+
         <div className="mt-8 text-center">
           <Link
             href="/dashboard"

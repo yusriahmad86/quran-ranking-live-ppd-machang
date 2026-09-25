@@ -38,7 +38,14 @@ async function compressImage(file: File) {
 
   const image = await createImageBitmap(file);
 
-  const maxDimension = 1600;
+  // =====================================================
+  // OPTIMIZATION GAMBAR
+  // =====================================================
+  // Maksimum 800px pada sisi terpanjang.
+  // Sesuai untuk gambar profil peserta dan ranking.
+  // =====================================================
+
+  const maxDimension = 800;
 
   const scale = Math.min(
     1,
@@ -67,6 +74,10 @@ async function compressImage(file: File) {
     throw new Error("Gagal memproses gambar.");
   }
 
+  // Kualiti rendering imej
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+
   context.drawImage(
     image,
     0,
@@ -77,8 +88,15 @@ async function compressImage(file: File) {
 
   image.close();
 
+  // =====================================================
+  // COMPRESSION DINAMIK
+  // =====================================================
+
   let quality = 0.85;
   let blob: Blob | null = null;
+
+  // Sasaran utama: sekitar 250 KB
+  const targetSize = 250 * 1024;
 
   while (quality >= 0.4) {
     blob = await new Promise<Blob | null>(
@@ -93,7 +111,7 @@ async function compressImage(file: File) {
 
     if (
       blob &&
-      blob.size <= 700 * 1024
+      blob.size <= targetSize
     ) {
       break;
     }
@@ -107,6 +125,7 @@ async function compressImage(file: File) {
     );
   }
 
+  // Had keselamatan maksimum selepas compression
   if (
     blob.size >
     3 * 1024 * 1024
@@ -813,7 +832,8 @@ export default function DaftarMuridPage() {
 
               <p className="mt-2 text-xs text-slate-500">
                 JPG, PNG atau WebP. Gambar akan dimampatkan
-                secara automatik.
+                secara automatik kepada saiz yang lebih ringan
+                sebelum dimuat naik.
               </p>
 
               {newParticipantPhoto && (
@@ -896,8 +916,8 @@ export default function DaftarMuridPage() {
             </p>
 
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Gambar akan dimampatkan secara automatik
-              sebelum dimuat naik.
+              Gambar akan dikecilkan kepada maksimum
+              800px dan dimampatkan sebelum dimuat naik.
             </p>
 
           </div>
