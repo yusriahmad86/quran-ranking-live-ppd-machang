@@ -270,6 +270,7 @@ export default function AnalisaKeseluruhanPage() {
           selectedDate
         )
         .is("voided_at", null)
+        .eq("is_baseline", false)
         .order("created_at", {
           ascending: false,
         });
