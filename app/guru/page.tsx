@@ -55,6 +55,28 @@ function getMalaysiaDate() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+function formatSelectedDate(dateString: string) {
+  if (!dateString) {
+    return "";
+  }
+
+  const [year, month, day] = dateString
+    .split("-")
+    .map(Number);
+
+  const date = new Date(
+    year,
+    month - 1,
+    day
+  );
+
+  return date.toLocaleDateString("ms-MY", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function GuruPage() {
   const [schools, setSchools] = useState<School[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -68,6 +90,13 @@ export default function GuruPage() {
 
   const [recordsParticipantId, setRecordsParticipantId] =
     useState("");
+
+  // =====================================================
+  // TARIKH SEMAKAN REKOD
+  // =====================================================
+
+  const [selectedRecordDate, setSelectedRecordDate] =
+    useState(getMalaysiaDate());
 
   const [loading, setLoading] = useState(true);
   const [savingAllReadings, setSavingAllReadings] = useState(false);
@@ -95,7 +124,7 @@ export default function GuruPage() {
   const remainingCount =
     participants.length - filledCount;
 
-  const todayPages = useMemo(
+  const selectedDatePages = useMemo(
     () =>
       records.reduce(
         (total, record) =>
@@ -188,19 +217,20 @@ export default function GuruPage() {
   }
 
   // =====================================================
-  // LOAD REKOD BACAAN HARI INI
+  // LOAD REKOD BACAAN MENGIKUT TARIKH
   // =====================================================
 
   async function loadRecords(
-    participantId: string
+    participantId: string,
+    recordDate: string
   ) {
-    if (!participantId) {
+    if (
+      !participantId ||
+      !recordDate
+    ) {
       setRecords([]);
       return;
     }
-
-    const malaysiaDate =
-      getMalaysiaDate();
 
     const { data, error } =
       await supabase
@@ -214,7 +244,7 @@ export default function GuruPage() {
         )
         .eq(
           "reading_date",
-          malaysiaDate
+          recordDate
         )
         .is(
           "voided_at",
@@ -472,19 +502,26 @@ export default function GuruPage() {
   }, [selectedGroup]);
 
   // =====================================================
-  // BILA PESERTA REKOD BERUBAH
+  // BILA PESERTA REKOD / TARIKH BERUBAH
   // =====================================================
 
   useEffect(() => {
-    if (!recordsParticipantId) {
+    if (
+      !recordsParticipantId ||
+      !selectedRecordDate
+    ) {
       setRecords([]);
       return;
     }
 
     void loadRecords(
-      recordsParticipantId
+      recordsParticipantId,
+      selectedRecordDate
     );
-  }, [recordsParticipantId]);
+  }, [
+    recordsParticipantId,
+    selectedRecordDate,
+  ]);
 
   // =====================================================
   // INPUT MUKA SURAT
@@ -1241,45 +1278,84 @@ export default function GuruPage() {
               👤 Lihat Rekod Peserta
             </h3>
 
-            <select
-              value={
-                selectedParticipantId
-              }
-              onChange={(event) =>
-                handleSelectParticipant(
-                  event.target.value
-                )
-              }
-              className="mt-5 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
-            >
+            {/* TARIKH SEMAKAN */}
 
-              <option value="">
-                — Pilih peserta —
-              </option>
+            <div className="mt-5">
 
-              {participants.map(
-                (participant) => (
-                  <option
-                    key={
-                      participant.id
-                    }
-                    value={
-                      participant.id
-                    }
-                  >
-                    {
-                      participant.name
-                    }{" "}
-                    ·{" "}
-                    {
-                      participant.current_page
-                    }
-                    /604
-                  </option>
-                )
-              )}
+              <label className="text-sm font-semibold text-slate-300">
+                📅 Tarikh Rekod
+              </label>
 
-            </select>
+              <input
+                type="date"
+                value={selectedRecordDate}
+                max={getMalaysiaDate()}
+                onChange={(event) => {
+                  setSelectedRecordDate(
+                    event.target.value
+                  );
+
+                  setError("");
+                  setSuccess("");
+                }}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+              />
+
+              <p className="mt-2 text-xs text-slate-500">
+                Pilih tarikh untuk melihat rekod bacaan peserta pada hari tersebut.
+              </p>
+
+            </div>
+
+            {/* PESERTA */}
+
+            <div className="mt-5">
+
+              <label className="text-sm font-semibold text-slate-300">
+                👤 Peserta
+              </label>
+
+              <select
+                value={
+                  selectedParticipantId
+                }
+                onChange={(event) =>
+                  handleSelectParticipant(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+              >
+
+                <option value="">
+                  — Pilih peserta —
+                </option>
+
+                {participants.map(
+                  (participant) => (
+                    <option
+                      key={
+                        participant.id
+                      }
+                      value={
+                        participant.id
+                      }
+                    >
+                      {
+                        participant.name
+                      }{" "}
+                      ·{" "}
+                      {
+                        participant.current_page
+                      }
+                      /604
+                    </option>
+                  )
+                )}
+
+              </select>
+
+            </div>
 
             {selectedParticipant && (
 
@@ -1369,11 +1445,16 @@ export default function GuruPage() {
 
           </div>
 
-          {/* BACAAN HARI INI */}
+          {/* REKOD TARIKH DIPILIH */}
+
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-7">
 
-            <h3 className="text-xl font-bold">
-              📊 Bacaan Hari Ini
+            <p className="text-xs font-semibold text-emerald-400">
+              REKOD BACAAN
+            </p>
+
+            <h3 className="mt-1 text-xl font-bold">
+              📊 Bacaan Tarikh Dipilih
             </h3>
 
             {recordsParticipant ? (
@@ -1386,16 +1467,23 @@ export default function GuruPage() {
                   }
                 </p>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Jumlah bacaan hari ini
+                <p className="mt-1 text-sm font-semibold text-blue-400">
+                  📅{" "}
+                  {formatSelectedDate(
+                    selectedRecordDate
+                  )}
+                </p>
+
+                <p className="mt-3 text-sm text-slate-500">
+                  Jumlah bacaan pada tarikh dipilih
                 </p>
 
                 <p className="mt-2 text-4xl font-black text-emerald-400">
-                  {todayPages}
+                  {selectedDatePages}
                 </p>
 
                 <p className="text-sm text-slate-400">
-                  muka surat hari ini
+                  muka surat
                 </p>
 
                 <div className="mt-6 space-y-3">
@@ -1432,9 +1520,13 @@ export default function GuruPage() {
                       )
                     )
                   ) : (
-                    <p className="text-slate-500">
-                      Belum ada rekod bacaan hari ini.
-                    </p>
+                    <div className="rounded-xl border border-white/5 bg-slate-800/50 px-4 py-4">
+
+                      <p className="text-sm text-slate-400">
+                        Tiada rekod bacaan pada tarikh ini.
+                      </p>
+
+                    </div>
                   )}
 
                 </div>
@@ -1443,9 +1535,13 @@ export default function GuruPage() {
 
             ) : (
 
-              <p className="mt-5 text-slate-500">
-                Pilih peserta untuk melihat rekod hari ini.
-              </p>
+              <div className="mt-5 rounded-xl border border-white/5 bg-slate-800/50 px-4 py-4">
+
+                <p className="text-sm text-slate-500">
+                  Pilih peserta untuk melihat rekod bacaan pada tarikh yang dipilih.
+                </p>
+
+              </div>
 
             )}
 
