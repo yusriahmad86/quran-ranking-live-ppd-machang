@@ -6,11 +6,20 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type TopReader = {
-  position: number;
-  participant_name: string;
+  rank: number;
+  id: string;
+  name: string;
   photo_url: string | null;
-  school_name: string;
-  pages_today: number;
+  pages_read: number;
+  current_page: number;
+  school_id: string | null;
+  group_number: number | null;
+  school_name?: string;
+};
+
+type ActiveSchool = {
+  id: string;
+  name: string;
 };
 
 function formatDate(date: string) {
@@ -50,6 +59,7 @@ function ParticipantPhoto({
 
 export default function TopReaderPage() {
   const [readers, setReaders] = useState<TopReader[]>([]);
+  const [activeSchools, setActiveSchools] = useState<ActiveSchool[]>([]);
   const [rankingDate, setRankingDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,21 +69,27 @@ export default function TopReaderPage() {
       timeZone: "Asia/Kuala_Lumpur",
     }).format(new Date());
 
-    const { data, error: rpcError } = await supabase.rpc(
-      "get_top_readers",
-      {
+    const [
+      { data: readerData, error: readerError },
+      { data: schoolData, error: schoolError },
+    ] = await Promise.all([
+      supabase.rpc("get_top_readers", {
         p_date: date,
-        p_limit: null,
-      }
-    );
+        p_limit: 1000,
+      }),
+      supabase.rpc("get_active_schools"),
+    ]);
 
-    if (rpcError) {
-      setError(rpcError.message);
+    const firstError = readerError || schoolError;
+
+    if (firstError) {
+      setError(firstError.message);
       setLoading(false);
       return;
     }
 
-    setReaders((data ?? []) as TopReader[]);
+    setReaders((readerData ?? []) as TopReader[]);
+    setActiveSchools((schoolData ?? []) as ActiveSchool[]);
     setRankingDate(date);
     setError("");
     setLoading(false);
@@ -122,8 +138,6 @@ export default function TopReaderPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      {/* HEADER */}
-
       <header className="border-b border-white/10 bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-8">
           <Link
@@ -142,8 +156,8 @@ export default function TopReaderPage() {
             </h1>
 
             <p className="mt-3 text-slate-400">
-              Ranking penuh peserta berdasarkan jumlah muka surat
-              yang dibaca hari ini.
+              Ranking penuh peserta berdasarkan jumlah muka surat yang dibaca
+              hari ini.
             </p>
 
             {rankingDate && (
@@ -163,70 +177,79 @@ export default function TopReaderPage() {
         </div>
       </header>
 
-      {/* CONTENT */}
-
       <section className="mx-auto max-w-6xl px-6 py-10">
         {readers.length > 0 ? (
+          <div className="mb-6 text-sm font-bold text-emerald-400">
+            {readers.length} peserta mempunyai rekod bacaan hari ini.
+          </div>
+        ) : null}
+
+        {readers.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {readers.map((item) => (
-              <div
-                key={`${item.position}-${item.participant_name}`}
-                className="rounded-3xl border border-white/10 bg-slate-900 p-6 transition hover:border-emerald-400/30"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  {/* RANKING */}
+            {readers.map((item) => {
+              const schoolName =
+                activeSchools.find((school) => school.id === item.school_id)
+                  ?.name ?? "Sekolah tidak tersedia";
 
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-2xl font-black text-emerald-400">
-                    {item.position}
-                  </span>
+              return (
+                <div
+                  key={`${item.rank}-${item.id}`}
+                  className="rounded-3xl border border-white/10 bg-slate-900 p-6 transition hover:border-emerald-400/30"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-2xl font-black text-emerald-400">
+                      {item.rank}
+                    </span>
 
-                  {/* PHOTO */}
+                    <ParticipantPhoto
+                      photoUrl={item.photo_url}
+                      name={item.name}
+                    />
 
-                  <ParticipantPhoto
-                    photoUrl={item.photo_url}
-                    name={item.participant_name}
-                  />
+                    <div className="text-right">
+                      <p className="text-3xl font-black text-emerald-400">
+                        {item.pages_read}
+                      </p>
 
-                  {/* PAGES */}
+                      <p className="text-xs text-slate-500">
+                        muka surat
+                      </p>
+                    </div>
+                  </div>
 
-                  <div className="text-right">
-                    <p className="text-3xl font-black text-emerald-400">
-                      {item.pages_today}
-                    </p>
+                  <h2 className="mt-6 text-xl font-black">
+                    {item.name}
+                  </h2>
 
-                    <p className="text-xs text-slate-500">
-                      muka surat
-                    </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {schoolName}
+                  </p>
+
+                  <p className="mt-1 text-sm font-bold text-emerald-400">
+                    Kumpulan {item.group_number ?? "—"}
+                  </p>
+
+                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (item.pages_read / 604) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-2 flex justify-between text-xs text-slate-500">
+                    <span>Bacaan hari ini</span>
+                    <span>
+                      {item.current_page} / 604
+                    </span>
                   </div>
                 </div>
-
-                {/* NAME */}
-
-                <h2 className="mt-6 text-xl font-black">
-                  {item.participant_name}
-                </h2>
-
-                {/* SCHOOL */}
-
-                <p className="mt-1 text-sm text-slate-400">
-                  {item.school_name}
-                </p>
-
-                {/* PROGRESS INDICATOR */}
-
-                <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-emerald-500"
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        (item.pages_today / 604) * 100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-10 text-center text-slate-400">
@@ -234,8 +257,6 @@ export default function TopReaderPage() {
           </div>
         )}
       </section>
-
-      {/* FOOTER */}
 
       <footer className="border-t border-white/10 bg-slate-900">
         <p className="py-6 text-center text-xs text-slate-600">

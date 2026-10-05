@@ -60,7 +60,7 @@ function ParticipantPhoto({
   name: string;
 }) {
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-emerald-400/20 bg-slate-800 sm:h-14 sm:w-14">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-emerald-400/20 bg-slate-800 sm:h-24 sm:w-24">
       {photoUrl ? (
         <img
           src={photoUrl}
