@@ -25,6 +25,7 @@ type ReadingRecord = {
   participant_id: string;
   page_from: number;
   page_to: number;
+  pages_read: number;
   created_at: string;
   voided_at?: string | null;
 };
@@ -37,6 +38,7 @@ type StudentAnalysis = Participant & {
   level: string;
   level_icon: string;
   latest_reading?: ReadingRecord | null;
+  daily_start_page?: number | null;
 };
 
 type SchoolAnalysis = {
@@ -259,7 +261,7 @@ export default function AnalisaKeseluruhanPage() {
       } = await supabase
         .from("reading_records")
         .select(
-          "id,participant_id,page_from,page_to,created_at,voided_at"
+          "id,participant_id,page_from,page_to,pages_read,created_at,voided_at,is_baseline"
         )
         .in(
           "participant_id",
@@ -283,6 +285,37 @@ export default function AnalisaKeseluruhanPage() {
 
       const readings: ReadingRecord[] =
         readingData || [];
+
+      /* =============================== */
+      /* MUKA SURAT PERMULAAN HARI INI */
+      /* =============================== */
+
+      const {
+        data: dailyStartData,
+        error: dailyStartError,
+      } = await supabase
+        .from("daily_start_pages")
+        .select("participant_id,start_page")
+        .in("participant_id", participantIds)
+        .eq("reading_date", selectedDate);
+
+      if (dailyStartError) {
+        throw new Error(
+          dailyStartError.message
+        );
+      }
+
+      const dailyStartMap =
+        new Map<string, number>();
+
+      (dailyStartData || []).forEach(
+        (item: any) => {
+          dailyStartMap.set(
+            item.participant_id,
+            Number(item.start_page || 0)
+          );
+        }
+      );
 
       /* =============================== */
       /* SCHOOL MAP */
@@ -343,35 +376,23 @@ export default function AnalisaKeseluruhanPage() {
 
           /*
            * BACAAN HARI INI
-           * Hanya berdasarkan reading_records
-           * untuk tarikh yang dipilih.
+           * Gunakan jumlah pages_read daripada semua
+           * rekod bacaan pada tarikh dipilih.
+           * Ini diselaraskan dengan logik Top Reader.
            */
+          const dailyStartPage =
+            dailyStartMap.get(student.id) ??
+            null;
+
           const pagesToday =
-            studentReadings.reduce(
-              (
-                total,
-                reading
-              ) => {
-                const from = Number(
-                  reading.page_from || 0
-                );
-
-                const to = Number(
-                  reading.page_to || 0
-                );
-
-                const pages =
-                  Math.max(
-                    0,
-                    to - from
-                  );
-
-                return (
-                  total + pages
-                );
-              },
-              0
-            );
+            dailyStartPage !== null
+              ? studentReadings.reduce(
+                  (totalPages, reading) =>
+                    totalPages +
+                    Number(reading.pages_read || 0),
+                  0
+                )
+              : 0;
 
           const level = getLevel(
             Number(
@@ -403,6 +424,11 @@ export default function AnalisaKeseluruhanPage() {
 
             latest_reading:
               latestReading,
+
+            daily_start_page:
+              dailyStartMap.get(
+                student.id
+              ) ?? null,
           };
         });
 
@@ -663,42 +689,49 @@ export default function AnalisaKeseluruhanPage() {
   const levelAnalysis = [
     {
       name: "GRANDMASTER",
+      pages: "m/s 604",
       icon: "👑",
       count:
         statistics.grandmaster,
     },
     {
       name: "HEROIC",
+      pages: "m/s 401–603",
       icon: "⚔️",
       count:
         statistics.heroic,
     },
     {
       name: "DIAMOND",
+      pages: "m/s 301–400",
       icon: "💎",
       count:
         statistics.diamond,
     },
     {
       name: "PLATINUM",
+      pages: "m/s 201–300",
       icon: "💠",
       count:
         statistics.platinum,
     },
     {
       name: "GOLD",
+      pages: "m/s 101–200",
       icon: "🥇",
       count:
         statistics.gold,
     },
     {
       name: "SILVER",
+      pages: "m/s 51–100",
       icon: "🥈",
       count:
         statistics.silver,
     },
     {
       name: "BRONZE",
+      pages: "m/s 1–50",
       icon: "🥉",
       count:
         statistics.bronze,
@@ -998,8 +1031,7 @@ export default function AnalisaKeseluruhanPage() {
                 ❌ Ralat
               </div>
 
-              <div className="mt-1 text-sm">
-                {error}
+              <div className="mt-1 text-sm">{error}
               </div>
             </div>
           )}
@@ -1163,6 +1195,10 @@ export default function AnalisaKeseluruhanPage() {
 
                       <div className="mt-2 text-xs font-black print:mt-0 print:text-[6.5pt]">
                         {level.name}
+                      </div>
+
+                      <div className="mt-1 text-[10px] font-semibold text-slate-400 print:mt-0 print:text-[5.5pt] print:text-black">
+                        {level.pages}
                       </div>
 
                       <div className="mt-1 text-2xl font-black print:mt-0 print:text-sm">
@@ -1378,11 +1414,15 @@ export default function AnalisaKeseluruhanPage() {
                         </th>
 
                         <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
-                          Muka Surat
+                          M/S Mula hari ini
                         </th>
 
                         <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
                           Bacaan Hari Ini
+                        </th>
+
+                        <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
+                          Muka Surat Terakhir Hari Ini
                         </th>
 
                         <th className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
@@ -1444,7 +1484,7 @@ export default function AnalisaKeseluruhanPage() {
 
                             <td className="px-3 py-3 text-center font-black print:px-0.5 print:py-0.5">
                               {
-                                student.current_page
+                                student.daily_start_page ?? "-"
                               }
                             </td>
 
@@ -1453,6 +1493,10 @@ export default function AnalisaKeseluruhanPage() {
                               0
                                 ? `+${student.pages_today}`
                                 : "-"}
+                            </td>
+
+                            <td className="px-3 py-3 text-center font-black print:px-0.5 print:py-0.5">
+                              {student.latest_reading?.page_to ?? "-"}
                             </td>
 
                             <td className="px-3 py-3 text-center print:px-0.5 print:py-0.5">
