@@ -579,7 +579,7 @@ export default async function DashboardPage() {
 
             <p className="text-[8px] leading-tight text-slate-400 sm:text-xs">
 
-              Jumlah Sekolah
+              Jumlah Sekolah Terlibat
 
             </p>
 
