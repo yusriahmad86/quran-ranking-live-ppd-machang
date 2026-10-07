@@ -520,38 +520,35 @@ export default function RankingPage() {
     <main className="min-h-screen bg-slate-950 text-white">
 
       <header className="border-b border-white/10 bg-slate-900">
+  <div className="mx-auto max-w-6xl px-3 py-4 text-center sm:px-6 sm:py-6">
 
-        <div className="mx-auto max-w-6xl px-6 py-10 text-center">
+    {/* GRAFIK UTAMA */}
+    <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
+      <img
+        src="/og-image2.png"
+        alt="Quran Ranking Live PPD Machang"
+        className="block h-auto w-full object-cover"
+      />
+    </div>
 
-          <div className="text-5xl">📖</div>
+    {/* STATUS LIVE */}
+    <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2">
+      <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
 
-          <h1 className="mt-3 text-4xl font-black">
+      <span className="text-sm font-semibold text-red-400">
+        LIVE · Dikemas kini setiap 15 saat
+      </span>
+    </div>
 
-            QURAN RANKING <span className="text-emerald-400">LIVE</span>
+    {/* TARIKH */}
+    {rankings?.date && (
+      <p className="mt-3 text-sm text-slate-400">
+        📅 {formatDate(rankings.date)}
+      </p>
+    )}
 
-          </h1>
-
-          <p className="mt-4 font-bold tracking-wide text-yellow-400">PROGRAM KHATAM MURID</p>
-
-          <p className="mt-1 text-xl font-black">PPD MACHANG</p>
-
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2">
-
-            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
-
-            <span className="text-sm font-semibold text-red-400">LIVE · Dikemas kini setiap 15 saat</span>
-
-          </div>
-
-          {rankings?.date && (
-
-            <p className="mt-4 text-sm text-slate-400">📅 {formatDate(rankings.date)}</p>
-
-          )}
-
-        </div>
-
-      </header>
+  </div>
+</header>
 
 
 
