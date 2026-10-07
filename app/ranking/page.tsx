@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 
@@ -258,7 +258,47 @@ export default function RankingPage() {
 
   const [selectedTopReader, setSelectedTopReader] = useState<DailyIndividual | null>(null);
 
+// =========================================
+// AUTO POPUP MONITOR
+// =========================================
 
+const previousIndividualRef = useRef<DailyIndividual[] | null>(null);
+
+const previousGrandmastersRef = useRef<Grandmaster[] | null>(null);
+
+const rankingMonitorReadyRef = useRef(false);
+
+const popupTimerRef = useRef<number | null>(null);
+
+
+function showAutoTopReader(item: DailyIndividual) {
+  if (popupTimerRef.current !== null) {
+    window.clearTimeout(popupTimerRef.current);
+  }
+
+  setSelectedGrandmaster(null);
+  setSelectedTopReader(item);
+
+  popupTimerRef.current = window.setTimeout(() => {
+    setSelectedTopReader(null);
+    popupTimerRef.current = null;
+  }, 8000);
+}
+
+
+function showAutoGrandmaster(item: Grandmaster) {
+  if (popupTimerRef.current !== null) {
+    window.clearTimeout(popupTimerRef.current);
+  }
+
+  setSelectedTopReader(null);
+  setSelectedGrandmaster(item);
+
+  popupTimerRef.current = window.setTimeout(() => {
+    setSelectedGrandmaster(null);
+    popupTimerRef.current = null;
+  }, 8000);
+}
 
   async function loadRankings() {
 
@@ -316,25 +356,113 @@ export default function RankingPage() {
 
 
 
-    setActiveSchools((activeSchoolData ?? []) as ActiveSchool[]);
+    const nextIndividual =
+  (individualData ?? []) as DailyIndividual[];
 
-    setRankings({
+const nextGrandmasters =
+  (grandmasterData ?? []) as Grandmaster[];
 
-      date: rankingDate,
 
-      individual: (individualData ?? []) as DailyIndividual[],
+// =========================================
+// SEMAK PERUBAHAN RANKING
+// =========================================
 
-      schools: (schoolData ?? []) as DailySchool[],
+if (rankingMonitorReadyRef.current) {
 
-      overall: (overallData ?? []) as OverallProgress[],
+  const previousIndividual =
+    previousIndividualRef.current ?? [];
 
-      grandmasters: (grandmasterData ?? []) as Grandmaster[],
+  const previousGrandmasters =
+    previousGrandmastersRef.current ?? [];
 
-    });
 
-    setError("");
+  // -----------------------------------------
+  // 1. SEMAK GRANDMASTER BARU
+  // -----------------------------------------
 
-    setLoading(false);
+  const previousGrandmasterNames = new Set(
+    previousGrandmasters.map(
+      (item) => item.participant_name
+    )
+  );
+
+  const newGrandmaster = nextGrandmasters.find(
+    (item) =>
+      !previousGrandmasterNames.has(
+        item.participant_name
+      )
+  );
+
+
+  // -----------------------------------------
+  // 2. SEMAK TOP READER YANG NAIK RANKING
+  // -----------------------------------------
+
+  const previousRankMap = new Map(
+    previousIndividual.map((item) => [
+      item.id,
+      item.rank,
+    ])
+  );
+
+  const improvedReader = nextIndividual.find(
+    (item) => {
+      const previousRank =
+        previousRankMap.get(item.id);
+
+      return (
+        previousRank !== undefined &&
+        item.rank < previousRank
+      );
+    }
+  );
+
+
+  // -----------------------------------------
+  // GRANDMASTER DIBERI KEUTAMAAN
+  // -----------------------------------------
+
+  if (newGrandmaster) {
+
+    showAutoGrandmaster(newGrandmaster);
+
+  } else if (improvedReader) {
+
+    showAutoTopReader(improvedReader);
+
+  }
+}
+
+
+// =========================================
+// SIMPAN DATA TERKINI UNTUK PERBANDINGAN
+// =========================================
+
+previousIndividualRef.current = nextIndividual;
+
+previousGrandmastersRef.current = nextGrandmasters;
+
+rankingMonitorReadyRef.current = true;
+
+
+// =========================================
+// UPDATE PAPARAN RANKING
+// =========================================
+
+setActiveSchools(
+  (activeSchoolData ?? []) as ActiveSchool[]
+);
+
+setRankings({
+  date: rankingDate,
+  individual: nextIndividual,
+  schools: (schoolData ?? []) as DailySchool[],
+  overall: (overallData ?? []) as OverallProgress[],
+  grandmasters: nextGrandmasters,
+});
+
+setError("");
+setLoading(false);
 
   }
 
@@ -350,6 +478,13 @@ export default function RankingPage() {
 
   }, []);
 
+  useEffect(() => {
+  return () => {
+    if (popupTimerRef.current !== null) {
+      window.clearTimeout(popupTimerRef.current);
+    }
+  };
+}, []);
 
 
   useEffect(() => {
@@ -598,7 +733,15 @@ export default function RankingPage() {
 
                   type="button"
 
-                  onClick={() => setSelectedTopReader(item)}
+                  onClick={() => {
+  if (popupTimerRef.current !== null) {
+    window.clearTimeout(popupTimerRef.current);
+    popupTimerRef.current = null;
+  }
+
+  setSelectedGrandmaster(null);
+  setSelectedTopReader(item);
+}}
 
                   className="group min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 text-left transition duration-300 hover:-translate-y-1 hover:border-emerald-300/50 hover:shadow-[0_0_35px_rgba(16,185,129,0.16)] focus:outline-none focus:ring-2 focus:ring-emerald-400/70 sm:rounded-3xl sm:p-6"
 
@@ -832,7 +975,15 @@ export default function RankingPage() {
 
                   type="button"
 
-                  onClick={() => setSelectedGrandmaster(item)}
+                  onClick={() => {
+  if (popupTimerRef.current !== null) {
+    window.clearTimeout(popupTimerRef.current);
+    popupTimerRef.current = null;
+  }
+
+  setSelectedTopReader(null);
+  setSelectedGrandmaster(item);
+}}
 
                   className="group w-full rounded-3xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-slate-900 p-6 text-center transition duration-300 hover:-translate-y-1 hover:border-yellow-300/50 hover:shadow-[0_0_35px_rgba(250,204,21,0.18)] focus:outline-none focus:ring-2 focus:ring-yellow-400/70"
 
@@ -1018,7 +1169,7 @@ export default function RankingPage() {
 
               <p className="mt-10 text-4xl font-black tracking-wide text-emerald-300 drop-shadow-[0_0_18px_rgba(52,211,153,0.45)] sm:text-6xl">
 
-                TAHNIAH!
+                TAHNIAH! 
 
               </p>
 
@@ -1036,9 +1187,10 @@ export default function RankingPage() {
 
               <p className="mt-2 text-base font-black text-emerald-400 sm:text-lg">
 
-                Kumpulan {selectedTopReader.group_number ?? "—"}
+                Kumpulan {selectedTopReader.group_number ?? "—"} 
 
               </p>
+              
 
               <div className="mx-auto mt-7 grid w-full max-w-xl gap-3 sm:grid-cols-2">
 
