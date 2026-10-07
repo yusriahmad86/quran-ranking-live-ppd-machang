@@ -461,7 +461,7 @@ export default async function DashboardPage() {
 
 
 
-          <h3 className="mb-1 text-sm font-bold sm:text-base">
+          <h3 className="mb-2 text-base font-black sm:text-lg">
 
             Menu Utama
 
@@ -469,193 +469,57 @@ export default async function DashboardPage() {
 
 
 
-          <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 sm:gap-2">
-
-
-
-            {/* ================================= */}
-
-            {/* PENGISIAN BACAAN */}
-
-            {/* ================================= */}
-
-
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
 
             <Link
-
               href="/guru"
-
-              className="group flex shrink-0 items-center rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-bold whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs transition hover:border-emerald-400/50 hover:bg-slate-800"
-
+              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-emerald-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
             >
-
-
-
-              <span className="whitespace-nowrap">
-
-                Pengisian Bacaan
-
-              </span>
-
-
-
+              <span className="shrink-0 text-sm sm:text-base">📖</span>
+              <span>Pengisian Bacaan</span>
             </Link>
 
-
-
-            {/* ================================= */}
-
-            {/* DAFTAR MURID */}
-
-            {/* ================================= */}
-
-
-
             <Link
-
               href="/guru/daftar-murid"
-
-              className="group flex shrink-0 items-center rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-bold whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs transition hover:border-blue-400/50 hover:bg-slate-800"
-
+              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-blue-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
             >
-
-
-
-              <span className="whitespace-nowrap">
-
-                Daftar Murid
-
-              </span>
-
-
-
+              <span className="shrink-0 text-sm sm:text-base">👨‍🎓</span>
+              <span>Daftar Murid</span>
             </Link>
 
-
-
-            {/* ================================= */}
-
-            {/* EDIT MURID */}
-
-            {/* ================================= */}
-
-
-
             <Link
-
               href="/guru/edit-murid"
-
-              className="group flex shrink-0 items-center rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-bold whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs transition hover:border-cyan-400/50 hover:bg-slate-800"
-
+              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-cyan-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
             >
-
-
-
-              <span className="whitespace-nowrap">
-
-                Edit Murid
-
-              </span>
-
-
-
+              <span className="shrink-0 text-sm sm:text-base">✏️</span>
+              <span>Edit Murid</span>
             </Link>
 
-
-
-            {/* ================================= */}
-
-            {/* RANKING */}
-
-            {/* ================================= */}
-
-
-
             <Link
-
               href="/ranking"
-
-              className="group flex shrink-0 items-center rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-bold whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs transition hover:border-yellow-400/50 hover:bg-slate-800"
-
+              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-yellow-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
             >
-
-
-
-              <span className="whitespace-nowrap">
-
-                Ranking Live
-
-              </span>
-
-
-
+              <span className="shrink-0 text-sm sm:text-base">🏆</span>
+              <span>Ranking Live</span>
             </Link>
 
-
-
-            {/* ================================= */}
-
-            {/* LAPORAN */}
-
-            {/* ================================= */}
-
-
-
             <Link
-
               href="/guru/laporan-kumpulan"
-
-              className="group flex shrink-0 items-center rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-bold whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs transition hover:border-purple-400/50 hover:bg-slate-800"
-
+              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-purple-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
             >
-
-
-
-              <span className="whitespace-nowrap">
-
-                Laporan Bacaan
-
-              </span>
-
-
-
+              <span className="shrink-0 text-sm sm:text-base">📄</span>
+              <span>Laporan Bacaan</span>
             </Link>
-
-
-
-            {/* ================================= */}
-
-            {/* ANALISA KESELURUHAN */}
-
-            {/* ================================= */}
-
-
 
             <Link
-
               href="/guru/analisa-keseluruhan"
-
-              className="group flex shrink-0 items-center rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-[10px] font-bold whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs transition hover:border-blue-400/50 hover:bg-slate-800"
-
+              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-blue-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
             >
-
-
-
-              <span className="whitespace-nowrap">
-
-                Analisa Keseluruhan
-
-              </span>
-
-
-
+              <span className="shrink-0 text-sm sm:text-base">📊</span>
+              <span>Analisa Keseluruhan</span>
             </Link>
-
-
 
           </div>
-
-
 
         </div>
 
