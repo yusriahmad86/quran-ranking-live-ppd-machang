@@ -452,79 +452,109 @@ export default async function DashboardPage() {
 
 
         {/* =================================== */}
-        {/* MENU UTAMA */}
-        {/* =================================== */}
+{/* =================================== */}
+{/* MENU UTAMA */}
+{/* =================================== */}
 
+<div className="mb-4">
 
+  <h3 className="mb-2 text-base font-black sm:text-lg">
+    MENU UTAMA
+  </h3>
 
-        <div className="mb-3">
+  <div className="grid grid-cols-3 gap-2 sm:gap-3">
 
+    {/* PENGISIAN BACAAN */}
+    <Link
+      href="/guru"
+      className="group relative overflow-hidden rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500/60 via-emerald-600/50 to-teal-700/60 p-2.5 text-white shadow-md shadow-emerald-900/20 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 sm:rounded-2xl sm:p-4"
+    >
+      <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="relative">
+        <div className="text-xl sm:text-2xl">📖</div>
+        <p className="mt-1 text-[10px] font-black leading-tight sm:text-sm">
+          Pengisian Bacaan
+        </p>
+      </div>
+    </Link>
 
+    {/* DAFTAR MURID */}
+    <Link
+      href="/guru/daftar-murid"
+      className="group relative overflow-hidden rounded-xl border border-blue-300/20 bg-gradient-to-br from-blue-500/60 via-blue-600/50 to-cyan-700/60 p-2.5 text-white shadow-md shadow-blue-900/20 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 sm:rounded-2xl sm:p-4"
+    >
+      <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="relative">
+        <div className="text-xl sm:text-2xl">👨‍🎓</div>
+        <p className="mt-1 text-[10px] font-black leading-tight sm:text-sm">
+          Daftar Murid
+        </p>
+      </div>
+    </Link>
 
-          <h3 className="mb-2 text-base font-black sm:text-lg">
+    {/* EDIT MURID */}
+    <Link
+      href="/guru/edit-murid"
+      className="group relative overflow-hidden rounded-xl border border-orange-300/20 bg-gradient-to-br from-orange-500/60 via-amber-500/50 to-yellow-600/60 p-2.5 text-white shadow-md shadow-orange-900/20 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 sm:rounded-2xl sm:p-4"
+    >
+      <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="relative">
+        <div className="text-xl sm:text-2xl">✏️</div>
+        <p className="mt-1 text-[10px] font-black leading-tight sm:text-sm">
+          Edit Murid
+        </p>
+      </div>
+    </Link>
 
-            Menu Utama
+    {/* RANKING LIVE */}
+    <Link
+      href="/ranking"
+      className="group relative overflow-hidden rounded-xl border border-purple-300/20 bg-gradient-to-br from-purple-500/60 via-violet-600/50 to-fuchsia-700/60 p-2.5 text-white shadow-md shadow-purple-900/20 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 sm:rounded-2xl sm:p-4"
+    >
+      <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="relative">
+        <div className="text-xl sm:text-2xl">🏆</div>
+        <p className="mt-1 text-[10px] font-black leading-tight sm:text-sm">
+          Ranking Live
+        </p>
+      </div>
+    </Link>
 
-          </h3>
+    {/* LAPORAN BACAAN */}
+    <Link
+      href="/guru/laporan-kumpulan"
+      className="group relative overflow-hidden rounded-xl border border-rose-300/20 bg-gradient-to-br from-rose-500/60 via-red-600/50 to-red-700/60 p-2.5 text-white shadow-md shadow-red-900/20 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 sm:rounded-2xl sm:p-4"
+    >
+      <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="relative">
+        <div className="text-xl sm:text-2xl">📄</div>
+        <p className="mt-1 text-[10px] font-black leading-tight sm:text-sm">
+          Laporan Bacaan
+        </p>
+      </div>
+    </Link>
 
+    {/* ANALISA KESELURUHAN */}
+    <Link
+      href="/guru/analisa-keseluruhan"
+      className="group relative overflow-hidden rounded-xl border border-yellow-300/20 bg-gradient-to-br from-yellow-400/60 via-amber-500/50 to-orange-600/60 p-2.5 text-white shadow-md shadow-orange-900/20 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 sm:rounded-2xl sm:p-4"
+    >
+      <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="relative">
+        <div className="text-xl sm:text-2xl">📊</div>
+        <p className="mt-1 text-[10px] font-black leading-tight sm:text-sm">
+          Analisa Keseluruhan
+        </p>
+      </div>
+    </Link>
 
+  </div>
 
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+</div>
 
-            <Link
-              href="/guru"
-              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-emerald-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
-            >
-              <span className="shrink-0 text-sm sm:text-base">📖</span>
-              <span>Pengisian Bacaan</span>
-            </Link>
-
-            <Link
-              href="/guru/daftar-murid"
-              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-blue-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
-            >
-              <span className="shrink-0 text-sm sm:text-base">👨‍🎓</span>
-              <span>Daftar Murid</span>
-            </Link>
-
-            <Link
-              href="/guru/edit-murid"
-              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-cyan-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
-            >
-              <span className="shrink-0 text-sm sm:text-base">✏️</span>
-              <span>Edit Murid</span>
-            </Link>
-
-            <Link
-              href="/ranking"
-              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-yellow-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
-            >
-              <span className="shrink-0 text-sm sm:text-base">🏆</span>
-              <span>Ranking Live</span>
-            </Link>
-
-            <Link
-              href="/guru/laporan-kumpulan"
-              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-purple-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
-            >
-              <span className="shrink-0 text-sm sm:text-base">📄</span>
-              <span>Laporan Bacaan</span>
-            </Link>
-
-            <Link
-              href="/guru/analisa-keseluruhan"
-              className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition hover:border-blue-400/50 hover:bg-slate-800 sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-xs"
-            >
-              <span className="shrink-0 text-sm sm:text-base">📊</span>
-              <span>Analisa Keseluruhan</span>
-            </Link>
-
-          </div>
-
-        </div>
-
- STATISTIK UTAMA
-
+ <h3 className="mb-2 text-base font-black sm:text-lg">
+  STATISTIK UTAMA
+</h3>
         {/* =================================== */}
 
 
@@ -629,7 +659,7 @@ export default async function DashboardPage() {
 
             <p className="text-[8px] leading-tight text-slate-400 sm:text-xs">
 
-              Bacaan Hari Ini
+              Jumlah Bacaan Semua Peserta Hari Ini
 
             </p>
 
@@ -774,7 +804,7 @@ export default async function DashboardPage() {
 
                 <p className="text-xs text-yellow-500">
 
-                  Grandmaster
+                  Grandmaster (Khatam)
 
                 </p>
 
