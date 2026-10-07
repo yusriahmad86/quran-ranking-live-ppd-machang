@@ -525,7 +525,7 @@ export default function RankingPage() {
     {/* GRAFIK UTAMA */}
     <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
       <img
-        src="/og-image2.png"
+        src="/og-image.png"
         alt="Quran Ranking Live PPD Machang"
         className="block h-auto w-full object-cover"
       />

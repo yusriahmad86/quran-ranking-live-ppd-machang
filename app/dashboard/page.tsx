@@ -523,7 +523,7 @@ export default async function DashboardPage() {
 
         </div>
 
-/* STATISTIK UTAMA */
+ STATISTIK UTAMA
 
         {/* =================================== */}
 
