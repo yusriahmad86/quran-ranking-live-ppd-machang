@@ -725,7 +725,10 @@ setLoading(false);
 
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
 
-              {individual.slice(0, 10).map((item) => (
+              {individual
+  .filter((item) => item.current_page < 604)
+  .slice(0, 10)
+  .map((item) => (
 
                 <button
 
@@ -957,7 +960,7 @@ setLoading(false);
 
             <p className="font-bold text-yellow-400">👑 PENCAPAIAN</p>
 
-            <h2 className="mt-1 text-2xl font-black sm:text-3xl">Grandmaster (Khatam Al-Quran) — {grandmasters.length} Orang</h2>
+            <h2 className="mt-1 text-2xl font-black sm:text-3xl">Grandmaster (Khatam Al-Quran) : {grandmasters.length} Orang</h2>
 
           </div>
 
