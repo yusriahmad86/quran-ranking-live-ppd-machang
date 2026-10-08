@@ -3892,7 +3892,7 @@ export default function GuruPage() {
 
 
 
-                📖 Mukasurat Permulaan
+                📖 Mukasurat Permulaan Hari Ini
 
 
 
