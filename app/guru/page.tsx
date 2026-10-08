@@ -3936,7 +3936,7 @@ export default function GuruPage() {
 
 
 
-                {showDailyStartPages ? "⌃" : "⌄"}
+                {showDailyStartPages ? "Buka" : "tutup"}
 
 
 
