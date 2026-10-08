@@ -665,10 +665,8 @@ export default async function DashboardPage() {
 
 
 
-            <p className="mt-1 text-4xl font-black">
-
-              {totalTodayPages.toLocaleString()}
-
+            <p className="mt-0.5 text-xl font-black sm:text-3xl">
+               {totalTodayPages.toLocaleString()}
             </p>
 
 
