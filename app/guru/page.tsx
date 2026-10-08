@@ -4094,7 +4094,7 @@ export default function GuruPage() {
 
 
 
-                              Mukasurat Permulaan
+                              Mukasurat Permulaan Hari Ini
 
 
 
@@ -5458,7 +5458,7 @@ export default function GuruPage() {
 
 
 
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
+                className="mt-2 w-full min-w-0 max-w-full box-border rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white outline-none focus:border-emerald-400"
 
 
 
