@@ -3936,7 +3936,9 @@ export default function GuruPage() {
 
 
 
-                {showDailyStartPages ? "Buka" : "tutup"}
+                <span className="text-blue-400 font-normal">
+  {showDailyStartPages ? "Tutup" : "Buka"}
+</span>
 
 
 
